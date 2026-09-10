@@ -1,5 +1,4 @@
 """
-Demo en vivo para la Sesion 2 de SMALC.
 Muestra 5 "modos" de OpenCV en tiempo real desde la camara.
 
 Modos (cambia con las teclas 1-5):
