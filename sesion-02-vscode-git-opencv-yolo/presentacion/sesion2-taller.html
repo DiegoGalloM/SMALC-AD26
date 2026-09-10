@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sesión 2 — VSCode, GitHub, OpenCV y YOLO</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0d1117; --bg-raised:#151b23; --border:#2b3341;
+    --green:#3fb950; --green-bright:#39ff14; --blue:#58a6ff; --orange:#f78166;
+    --text:#e6edf3; --text-dim:#8b949e; --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;overflow:hidden;position:relative;}
+  body::before{
+    content:"";position:fixed;inset:0;
+    background-image:linear-gradient(rgba(63,185,80,0.05) 1px, transparent 1px),linear-gradient(90deg, rgba(63,185,80,0.05) 1px, transparent 1px);
+    background-size:44px 44px;
+    -webkit-mask-image:radial-gradient(ellipse 90% 80% at 50% 40%, #000 40%, transparent 85%);
+    mask-image:radial-gradient(ellipse 90% 80% at 50% 40%, #000 40%, transparent 85%);
+    pointer-events:none;z-index:1;
+  }
+  .deck{position:relative;width:100vw;height:100vh;z-index:2;}
+  .slide{
+    position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;
+    padding:5.5vh 6.5vw 7vh 6.5vw;
+    transition:opacity .5s cubic-bezier(.4,0,.2,1), transform .5s cubic-bezier(.4,0,.2,1);
+  }
+  .notrans{transition:none !important;}
+
+  [data-show-at]{opacity:0;transform:translateY(16px) scale(.97);transition:opacity .45s ease, transform .45s ease;pointer-events:none;}
+  [data-show-at].revealed{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;}
+  .hide-until-revealed{opacity:0;pointer-events:none;transition:opacity .5s ease;}
+  .hide-until-revealed.revealed{opacity:1;pointer-events:auto;}
+
+  .eyebrow-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:3vh;}
+  .tag{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--text-dim);letter-spacing:.02em;}
+  .tag b{color:var(--green);}
+  .level-pill{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--bg);background:var(--green-bright);padding:5px 14px;border-radius:100px;font-weight:600;}
+
+  h1,h2,h3{font-family:'Space Grotesk',sans-serif;margin:0;font-weight:700;line-height:1.08;}
+  h1{font-size:clamp(34px,4.6vw,64px);}
+  h2{font-size:clamp(28px,3.6vw,46px);}
+  p{line-height:1.55;color:var(--text);font-size:clamp(16px,1.5vw,21px);}
+  .dim{color:var(--text-dim);}
+  .accent-green{color:var(--green-bright);}
+  .accent-blue{color:var(--blue);}
+
+  .window{background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:0 20px 50px -20px rgba(0,0,0,.6);}
+  .window-bar{display:flex;align-items:center;gap:8px;padding:10px 16px;background:#11161d;border-bottom:1px solid var(--border);}
+  .dot{width:11px;height:11px;border-radius:50%;}
+  .dot.r{background:#ff5f56;} .dot.y{background:#ffbd2e;} .dot.g{background:#27c93f;}
+  .window-bar .fname{margin-left:8px;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--text-dim);}
+  .window-body{padding:20px 24px;}
+  .window-img{width:100%;display:block;object-fit:cover;background:#000;}
+
+  .grid-2{display:grid;grid-template-columns:1.05fr 1fr;gap:5vw;align-items:center;flex:1;}
+  .grid-2x2{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr;gap:16px;flex:1;}
+  .grid-5{display:grid;grid-template-columns:repeat(5,1fr);gap:16px;flex:1;align-items:stretch;}
+
+  .wide-card{display:flex;gap:16px;align-items:center;background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--radius);padding:14px;}
+  .wide-card img{width:44%;height:100%;max-height:150px;object-fit:cover;border-radius:8px;flex-shrink:0;border:1px solid var(--border);}
+  .wide-card h3{font-size:19px;margin-bottom:6px;}
+  .wide-card p{font-size:14.5px;color:var(--text-dim);margin:0;}
+
+  .chip{background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--radius);padding:20px 16px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;justify-content:center;}
+  .chip .ico{width:38px;height:38px;}
+  .chip h3{font-size:16px;}
+
+  .term{font-family:'JetBrains Mono',monospace;font-size:clamp(14px,1.55vw,20px);line-height:2.1;}
+  .term .prompt{color:var(--green-bright);}
+  .term .cmd{color:var(--text);}
+  .term .comment{color:var(--text-dim);}
+  .term .line{white-space:nowrap;overflow:hidden;width:0;border-right:2px solid transparent;}
+  .term .line.revealed{width:var(--len);border-right-color:var(--green-bright);animation:typeOut .6s steps(34,end) forwards;}
+  @keyframes typeOut{from{width:0;}to{width:var(--len);}}
+
+  .step-list{display:flex;flex-direction:column;gap:16px;}
+  .step{display:flex;align-items:flex-start;gap:16px;}
+  .step .num{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--bg);background:var(--green-bright);min-width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+  .step .body h3{font-size:17px;margin-bottom:3px;}
+  .step .body p{margin:0;font-size:14.5px;}
+
+  .mission-box{border:1.5px dashed var(--green);border-radius:var(--radius);padding:26px 30px;background:rgba(63,185,80,0.06);}
+  .mission-box.orange{border-color:var(--orange);background:rgba(247,129,102,0.07);}
+  .mission-box.blue{border-color:var(--blue);background:rgba(88,166,255,0.07);}
+
+  .badge-row{display:flex;gap:14px;flex-wrap:wrap;}
+  .badge{display:flex;align-items:center;gap:9px;background:var(--bg-raised);border:1px solid var(--border);border-radius:100px;padding:9px 16px 9px 10px;}
+  .badge .check{width:20px;height:20px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:12px;color:#0d1117;font-weight:700;}
+  .badge span{font-family:'JetBrains Mono',monospace;font-size:14px;}
+
+  .hero-slide{align-items:center;text-align:center;}
+  .hero-slide .kicker-big{font-family:'JetBrains Mono',monospace;color:var(--green-bright);font-size:clamp(14px,1.4vw,19px);margin-bottom:14px;letter-spacing:.03em;}
+  .hero-slide h1{font-size:clamp(44px,7vw,92px);}
+  .hero-slide .sub{max-width:640px;margin:18px auto 0;font-size:clamp(16px,1.7vw,22px);color:var(--text-dim);}
+
+  .viewfinder{position:relative;width:100%;max-width:520px;margin:0 auto;}
+  .corner{position:absolute;width:34px;height:34px;border:4px solid var(--orange);animation:cornerPulse 2s ease-in-out infinite;}
+  .corner.tl{top:-10px;left:-10px;border-right:none;border-bottom:none;}
+  .corner.tr{top:-10px;right:-10px;border-left:none;border-bottom:none;}
+  .corner.bl{bottom:-10px;left:-10px;border-right:none;border-top:none;}
+  .corner.br{bottom:-10px;right:-10px;border-left:none;border-top:none;}
+  @keyframes cornerPulse{0%,100%{opacity:1;}50%{opacity:.45;}}
+
+  .big-question{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:0 9vw;font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(28px,3.6vw,46px);transition:opacity .6s cubic-bezier(.4,0,.2,1), transform .6s cubic-bezier(.4,0,.2,1);}
+  .big-question.collapsed{opacity:0;transform:translate(-36vw,-36vh) scale(.3);pointer-events:none;}
+
+  .progress-track{position:fixed;bottom:0;left:0;width:100%;height:4px;background:var(--bg-raised);z-index:20;}
+  .progress-fill{height:100%;background:var(--green-bright);width:6.25%;transition:width .35s ease;box-shadow:0 0 10px var(--green-bright);}
+  .chrome-bottom{position:fixed;bottom:14px;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:0 22px;z-index:20;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text-dim);pointer-events:none;}
+  .navbtns{display:flex;gap:8px;pointer-events:auto;}
+  .navbtn{width:38px;height:38px;border:1px solid var(--border);background:var(--bg-raised);color:var(--text);border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;}
+  .navbtn:hover{border-color:var(--green);}
+
+  #flashOverlay{position:fixed;inset:0;background:var(--green-bright);opacity:0;pointer-events:none;z-index:60;}
+  .flash-active{animation:flashPulse .45s ease;}
+  @keyframes flashPulse{0%{opacity:0;}14%{opacity:.10;}100%{opacity:0;}}
+
+  .eye-group{transform-box:fill-box;transform-origin:center;animation:blinkEye 5.5s ease-in-out infinite;}
+  @keyframes blinkEye{0%,90%,100%{transform:scaleY(1);}94%{transform:scaleY(.12);}}
+  .pupil{transform-box:fill-box;transform-origin:center;animation:lookAround 4.5s ease-in-out infinite;}
+  @keyframes lookAround{0%,100%{transform:translateX(0);}20%{transform:translateX(-3px);}55%{transform:translateX(3px);}80%{transform:translateX(0);}}
+
+  .pulse-node{transform-box:fill-box;transform-origin:center;animation:nodePulse 1.8s ease-in-out infinite;}
+  @keyframes nodePulse{0%,100%{transform:scale(1);}50%{transform:scale(1.14);}}
+
+  .drone-hover{transform-box:fill-box;transform-origin:center;animation:hover 2.6s ease-in-out infinite;}
+  @keyframes hover{0%,100%{transform:translateY(0);}50%{transform:translateY(-9px);}}
+  .prop{transform-box:fill-box;transform-origin:center;animation:spin .18s linear infinite;}
+  @keyframes spin{from{transform:rotate(0);}to{transform:rotate(180deg);}}
+
+  .scan-line{transform-box:fill-box;transform-origin:center;animation:scanY 2.4s ease-in-out infinite;}
+  @keyframes scanY{0%{transform:translateY(0);}50%{transform:translateY(115px);}100%{transform:translateY(0);}}
+
+  .mini-mascot{position:fixed;left:26px;bottom:52px;width:58px;z-index:15;opacity:.94;}
+  .mascot-state{display:none;}
+  .mini-mascot.state-1 .s1{display:block;}
+  .mini-mascot.state-2 .s2{display:block;}
+  .mini-mascot.state-3 .s3{display:block;}
+
+  @media (prefers-reduced-motion: reduce){
+    .slide,[data-show-at],.big-question{transition:none;}
+    .eye-group,.pupil,.pulse-node,.drone-hover,.prop,.scan-line,.corner{animation:none;}
+    .term .line.revealed{animation:none;width:var(--len);}
+  }
+</style>
+</head>
+<body>
+<div id="flashOverlay"></div>
+
+<div class="mini-mascot state-1" id="miniMascot">
+  <svg viewBox="0 0 120 120" width="100%">
+    <g class="mascot-state s1">
+      <rect x="28" y="18" width="64" height="64" rx="16" fill="none" stroke="#3fb950" stroke-width="4"/>
+      <line x1="60" y1="18" x2="60" y2="4" stroke="#3fb950" stroke-width="4"/><circle cx="60" cy="4" r="5" fill="#39ff14"/>
+      <g class="eye-group"><rect x="44" y="40" width="12" height="12" rx="2" fill="#39ff14"/><rect x="64" y="40" width="12" height="12" rx="2" fill="#39ff14"/></g>
+      <path d="M46 66 Q60 76 74 66" stroke="#e6edf3" stroke-width="4" fill="none" stroke-linecap="round"/>
+    </g>
+    <g class="mascot-state s2">
+      <rect x="28" y="18" width="64" height="64" rx="16" fill="none" stroke="#58a6ff" stroke-width="4"/>
+      <line x1="60" y1="18" x2="60" y2="4" stroke="#58a6ff" stroke-width="4"/><circle cx="60" cy="4" r="5" fill="#58a6ff"/>
+      <g class="eye-group"><circle cx="60" cy="48" r="15" fill="none" stroke="#39ff14" stroke-width="4"/><circle class="pupil" cx="60" cy="48" r="5" fill="#39ff14"/></g>
+      <path d="M46 70 Q60 80 74 70" stroke="#e6edf3" stroke-width="4" fill="none" stroke-linecap="round"/>
+    </g>
+    <g class="mascot-state s3">
+      <rect x="28" y="18" width="64" height="64" rx="16" fill="none" stroke="#39ff14" stroke-width="4"/>
+      <line x1="60" y1="18" x2="60" y2="4" stroke="#39ff14" stroke-width="4"/><circle cx="60" cy="4" r="5" fill="#39ff14"/>
+      <g class="eye-group"><circle cx="60" cy="48" r="15" fill="none" stroke="#39ff14" stroke-width="4"/><circle class="pupil" cx="60" cy="48" r="5" fill="#39ff14"/></g>
+      <rect x="18" y="8" width="16" height="16" fill="none" stroke="#f78166" stroke-width="3" class="corner" style="position:static;"/>
+      <path d="M44 70 Q60 82 76 70" stroke="#e6edf3" stroke-width="4" fill="none" stroke-linecap="round"/>
+    </g>
+  </svg>
+</div>
+
+<div class="deck">
+
+  <section class="slide" data-n="1">
+    <div class="hero-slide" style="height:100%;display:flex;flex-direction:column;justify-content:center;">
+      <div class="kicker-big">TALLER DE PROGRAMACIÓN &middot; SESIÓN 2</div>
+      <h1>VSCode, GitHub,<br><span class="accent-green">OpenCV</span> y <span class="accent-blue">YOLO</span></h1>
+      <p class="sub">Por el profesor: Gallo</p>
+      <div style="margin-top:5vh;width:180px;margin-left:auto;margin-right:auto;">
+        <svg viewBox="0 0 120 120" width="100%">
+          <rect x="28" y="18" width="64" height="64" rx="16" fill="none" stroke="#3fb950" stroke-width="4"/>
+          <line x1="60" y1="18" x2="60" y2="4" stroke="#3fb950" stroke-width="4"/><circle cx="60" cy="4" r="5" fill="#39ff14"/>
+          <g class="eye-group"><rect x="44" y="40" width="12" height="12" rx="2" fill="#39ff14"/><rect x="64" y="40" width="12" height="12" rx="2" fill="#39ff14"/></g>
+          <path d="M46 66 Q60 76 74 66" stroke="#e6edf3" stroke-width="4" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-n="2">
+    <div class="eyebrow-row"><span class="tag">PARTE A &middot; <b>Nivel 1</b></span><span class="level-pill">VSCODE</span></div>
+    <div class="grid-2">
+      <div>
+        <h2>Tu cuartel de programador</h2>
+        <p style="margin-top:14px;">Un editor de código es donde vas a escribir, leer y organizar todo tu código — como un procesador de texto, pero pensado para programar.</p>
+        <div style="display:flex;gap:10px;margin-top:22px;flex-wrap:wrap;">
+          <span class="badge"><span class="check">1</span><span>Explorador de archivos</span></span>
+          <span class="badge"><span class="check">2</span><span>Editor</span></span>
+          <span class="badge"><span class="check">3</span><span>Terminal integrada</span></span>
+        </div>
+      </div>
+      <div class="window">
+        <div class="window-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="fname">vscode — captura real</span></div>
+        <img class="window-img" src="https://raw.githubusercontent.com/microsoft/vscode-docs-archive/master/docs/getstarted/images/userinterface/hero.png" alt="Interfaz real de VS Code">
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-n="3">
+    <div class="eyebrow-row"><span class="tag">PARTE A &middot; Nivel 1</span><span class="level-pill">VSCODE</span></div>
+    <div class="grid-2">
+      <div class="step-list">
+        <div class="step"><div class="num">&gt;_</div><div class="body"><h3>Abre la terminal</h3><p>Ctrl + ñ (o Terminal → New Terminal) abre una terminal dentro de VSCode.</p></div></div>
+        <div class="step"><div class="num">&#9658;</div><div class="body"><h3>Ejecuta tu código</h3><p><span class="accent-green" style="font-family:'JetBrains Mono',monospace;">python archivo.py</span> corre tu script directamente ahí.</p></div></div>
+        <div class="step"><div class="num">&#10687;</div><div class="body"><h3>Extensiones útiles</h3><p><b>Python</b> y <b>Pylance</b> te ayudan a escribir código sin errores tontos.</p></div></div>
+      </div>
+      <div class="window">
+        <div class="window-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="fname">terminal — ejecutando script real</span></div>
+        <img class="window-img" src="https://raw.githubusercontent.com/microsoft/vscode-docs-archive/master/docs/python/images/tutorial/run-python-file-in-terminal.png" alt="Corriendo un script de Python en VS Code">
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-n="4">
+    <div class="eyebrow-row"><span class="tag">PARTE A &middot; Nivel 1</span><span class="level-pill">CONTROL DE VERSIONES</span></div>
+    <div class="grid-2">
+      <div>
+        <h2>Tu máquina del tiempo</h2>
+        <p style="margin-top:16px;font-size:clamp(17px,1.8vw,23px);">Es como el <span class="accent-green">historial de cambios de Google Docs</span> — pero para código.</p>
+        <p class="dim" style="margin-top:10px;">Si algo se rompe, siempre puedes volver a una versión que sí funcionaba.</p>
+        <p class="dim" style="margin-top:18px;font-family:'JetBrains Mono',monospace;font-size:14px;"># ojalá esto también existiera fuera de la compu</p>
+      </div>
+      <svg viewBox="0 0 400 140" width="100%">
+        <line x1="30" y1="70" x2="370" y2="70" stroke="#2b3341" stroke-width="10"/>
+        <circle class="pulse-node" cx="60" cy="70" r="26" fill="#58a6ff"/>
+        <circle cx="160" cy="70" r="26" fill="#3fb950"/><circle cx="260" cy="70" r="26" fill="#3fb950"/><circle cx="360" cy="70" r="26" fill="#3fb950"/>
+        <text x="60" y="76" text-anchor="middle" fill="#0d1117" font-size="13" font-family="JetBrains Mono" font-weight="700">v1</text>
+        <text x="160" y="76" text-anchor="middle" fill="#0d1117" font-size="13" font-family="JetBrains Mono" font-weight="700">v2</text>
+        <text x="260" y="76" text-anchor="middle" fill="#0d1117" font-size="13" font-family="JetBrains Mono" font-weight="700">v3</text>
+        <text x="360" y="76" text-anchor="middle" fill="#0d1117" font-size="13" font-family="JetBrains Mono" font-weight="700">v4</text>
+        <text x="60" y="118" text-anchor="middle" fill="#58a6ff" font-size="13" font-family="Inter">siempre puedes volver</text>
+      </svg>
+    </div>
+  </section>
+
+  <section class="slide" data-n="5">
+    <div class="eyebrow-row"><span class="tag">PARTE A &middot; Nivel 1</span><span class="level-pill">GIT VS GITHUB</span></div>
+    <div class="grid-2" style="grid-template-columns:1fr 1fr;">
+      <div class="wide-card" style="flex-direction:column;text-align:center;align-items:center;padding:34px 24px;">
+        <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/git/git-original.svg" style="width:70px;height:70px;max-height:none;" alt="Logo de Git">
+        <h3 style="font-size:24px;">Git</h3>
+        <p style="font-size:15px;">Guarda el historial de tu código en <b>tu computadora</b>.</p>
+      </div>
+      <div class="wide-card" style="flex-direction:column;text-align:center;align-items:center;padding:34px 24px;">
+        <img src="https://raw.githubusercontent.com/devicons/devicon/master/icons/github/github-original.svg" style="width:64px;height:64px;max-height:none;filter:invert(1) brightness(1.4);" alt="Logo de GitHub">
+        <h3 style="font-size:24px;">GitHub</h3>
+        <p style="font-size:15px;">Guarda una copia <b>en línea</b> para compartirlo con tu equipo.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-n="6" data-stages="4">
+    <div class="eyebrow-row"><span class="tag">PARTE A &middot; <b>Nivel 2</b></span><span class="level-pill">COMANDOS BÁSICOS</span></div>
+    <div class="window" style="max-width:820px;margin:0 auto;width:100%;">
+      <div class="window-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="fname">bash</span></div>
+      <div class="window-body term" id="termBody">
+        <div class="line" data-show-at="0" style="--len:44ch;"><span class="prompt">$</span> <span class="cmd">git clone &lt;url&gt;</span> <span class="comment"># baja el repo</span></div>
+        <div class="line" data-show-at="1" style="--len:36ch;"><span class="prompt">$</span> <span class="cmd">git add .</span> <span class="comment"># prepara cambios</span></div>
+        <div class="line" data-show-at="2" style="--len:38ch;"><span class="prompt">$</span> <span class="cmd">git commit -m "mi cambio"</span></div>
+        <div class="line" data-show-at="3" style="--len:32ch;"><span class="prompt">$</span> <span class="cmd">git push</span> <span class="comment"># sube a GitHub</span></div>
+        <div class="line" data-show-at="4" style="--len:46ch;"><span class="prompt">$</span> <span class="cmd">git pull</span> <span class="comment"># trae cambios del equipo</span></div>
+      </div>
+    </div>
+    <p class="dim" style="text-align:center;margin-top:2vh;font-size:14px;">→ pulsa la flecha derecha para escribir el siguiente comando</p>
+  </section>
+
+  <section class="slide" data-n="7">
+    <div class="eyebrow-row"><span class="tag">PARTE A &middot; Misión</span><span class="level-pill">EN VIVO</span></div>
+    <h2>Clona, cambia, sube — y viaja en el tiempo</h2>
+    <div class="mission-box" style="margin-top:4vh;">
+      <div class="step-list">
+        <div class="step"><div class="num">1</div><div class="body"><h3>Clona el repositorio del taller</h3></div></div>
+        <div class="step"><div class="num">2</div><div class="body"><h3>Agrega tu nombre a un archivo</h3></div></div>
+        <div class="step"><div class="num">3</div><div class="body"><h3>Haz tu primer commit + push</h3></div></div>
+        <div class="step"><div class="num">4</div><div class="body"><h3>Haz 2-3 commits más y revisa <span style="font-family:'JetBrains Mono',monospace;" class="accent-green">git log</span></h3></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide hero-slide" data-n="8">
+    <div class="kicker-big accent-blue">NIVEL 2 DESBLOQUEADO</div>
+    <h1 style="font-size:clamp(32px,5vw,58px);">El robot recibe <span class="accent-blue">ojos</span></h1>
+    <p class="sub">Ahora tu código va a poder <b>ver</b>: bienvenido a la visión por computadora.</p>
+    <div style="margin-top:5vh;width:200px;margin-left:auto;margin-right:auto;">
+      <svg viewBox="0 0 120 120" width="100%">
+        <rect x="28" y="18" width="64" height="64" rx="16" fill="none" stroke="#58a6ff" stroke-width="4"/>
+        <line x1="60" y1="18" x2="60" y2="4" stroke="#58a6ff" stroke-width="4"/><circle cx="60" cy="4" r="5" fill="#58a6ff"/>
+        <g class="eye-group"><circle cx="60" cy="48" r="15" fill="none" stroke="#39ff14" stroke-width="4"/><circle class="pupil" cx="60" cy="48" r="5" fill="#39ff14"/></g>
+        <path d="M46 70 Q60 80 74 70" stroke="#e6edf3" stroke-width="4" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+  </section>
+
+  <section class="slide" data-n="9">
+    <div class="eyebrow-row"><span class="tag">PARTE B &middot; Nivel 3</span><span class="level-pill">OPENCV</span></div>
+    <div class="grid-2">
+      <div>
+        <h2>¿Qué es OpenCV?</h2>
+        <p style="margin-top:14px;">Es una librería — una caja de herramientas — para que el código pueda <b>entender imágenes y video</b>: detectar formas, colores, movimiento.</p>
+        <p class="dim" style="margin-top:14px;font-family:'JetBrains Mono',monospace;font-size:15px;">import cv2</p>
+      </div>
+      <div style="display:flex;justify-content:center;"><img src="https://www.vectorlogo.zone/logos/opencv/opencv-icon.svg" style="width:min(220px,20vw);" alt="Logo oficial de OpenCV"></div>
+    </div>
+  </section>
+
+  <section class="slide" data-n="10" data-stages="3">
+    <div class="eyebrow-row"><span class="tag">PARTE B &middot; Nivel 3</span><span class="level-pill">FUNCIONES REALES</span></div>
+    <div class="grid-2x2">
+      <div class="wide-card" data-show-at="0"><img src="https://opencv24-python-tutorials.readthedocs.io/en/latest/_images/output.jpg" alt="Contornos"><div><h3>Contornos</h3><p>Dibuja el borde exacto de una forma detectada.</p></div></div>
+      <div class="wide-card" data-show-at="1"><img src="https://opencv24-python-tutorials.readthedocs.io/en/latest/_images/frame.jpg" alt="HSV"><div><h3>HSV</h3><p>Separa una imagen por color para poder "buscarlo".</p></div></div>
+      <div class="wide-card" data-show-at="2"><img src="https://opencv24-python-tutorials.readthedocs.io/en/latest/_images/threshold.jpg" alt="Thresholding"><div><h3>Thresholding</h3><p>Convierte la imagen en blanco y negro puro.</p></div></div>
+      <div class="wide-card" data-show-at="3"><img src="https://opencv24-python-tutorials.readthedocs.io/en/latest/_images/filter.jpg" alt="Kernels"><div><h3>Kernels</h3><p>Un filtro que recorre la imagen pixel por pixel.</p></div></div>
+    </div>
+  </section>
+
+  <section class="slide" data-n="11">
+    <div class="eyebrow-row"><span class="tag">PARTE B &middot; Nivel 4</span><span class="level-pill">YOLO</span></div>
+    <div class="grid-2">
+      <div class="viewfinder">
+        <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+        <img src="https://raw.githubusercontent.com/vincentgong7/VG_AlexeyAB_darknet/master/output/1.jpg" style="width:100%;border-radius:8px;display:block;" alt="Ejemplo real de detección de objetos">
+      </div>
+      <div>
+        <h2>You Only Look Once</h2>
+        <p style="margin-top:14px;">Un modelo que mira una imagen <b>una sola vez</b> y ya sabe qué objetos hay y dónde están.</p>
+        <p class="dim" style="margin-top:12px;">Dato curioso: sus creadores literalmente le pusieron ese nombre por el juego de palabras con <i>"You Only Live Once"</i>.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-n="12">
+    <div class="eyebrow-row"><span class="tag">PARTE B &middot; Nivel 4</span><span class="level-pill">ENTRENA UN MODELO</span></div>
+    <h2>Detecta un tomate — paso a paso</h2>
+    <div class="step-list" style="margin-top:4vh;">
+      <div class="step"><div class="num">1</div><div class="body"><h3>Recolecta fotos</h3><p>Muchas fotos de tomates, desde distintos ángulos y luces.</p></div></div>
+      <div class="step"><div class="num">2</div><div class="body"><h3>Etiqueta el tomate</h3><p>Marcas en cada foto dónde está exactamente el tomate.</p></div></div>
+      <div class="step"><div class="num">3</div><div class="body"><h3>Entrena el modelo</h3><p>El modelo aprende el patrón visual de "tomate" de esos ejemplos.</p></div></div>
+      <div class="step"><div class="num">4</div><div class="body"><h3>Prueba y mejora</h3><p>Le muestras fotos nuevas y ajustas lo que falle.</p></div></div>
+    </div>
+  </section>
+
+  <section class="slide" data-n="13" data-stages="6">
+    <div class="eyebrow-row hide-until-revealed"><span class="tag">PARTE B &middot; Nivel 4</span><span class="level-pill">EN LA VIDA REAL</span></div>
+    <div class="big-question" id="bigQuestion">¿Qué ejemplos de detección de objetos ya conoces?</div>
+    <div class="grid-5" style="margin-top:2vh;">
+      <div class="chip" data-show-at="2"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#39ff14" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M2 12h4M18 12h4M12 2v4M12 18v4"/></svg><h3>Drones</h3></div>
+      <div class="chip" data-show-at="3"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="12" cy="12" r="4"/></svg><h3>Seguridad</h3></div>
+      <div class="chip" data-show-at="4"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#f78166" stroke-width="2"><rect x="2" y="9" width="20" height="7" rx="2"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg><h3>Autos autónomos</h3></div>
+      <div class="chip" data-show-at="5"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#39ff14" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="3"/><circle cx="9" cy="12" r="2.5"/><path d="M15 10l3 2-3 2z"/></svg><h3>Redes sociales</h3></div>
+      <div class="chip" data-show-at="6"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="#58a6ff" stroke-width="2"><path d="M3 12l9-9 9 9M5 10v10h14V10"/></svg><h3>Realidad aumentada</h3></div>
+    </div>
+  </section>
+
+  <section class="slide" data-n="14">
+    <div class="eyebrow-row"><span class="tag">Actividad de cierre</span><span class="level-pill" style="background:var(--blue);">VUELO CON TELLO</span></div>
+    <div class="grid-2">
+      <div class="mission-box blue">
+        <div class="step-list">
+          <div class="step"><div class="num" style="background:var(--blue);">1</div><div class="body"><h3>Clona el repo del vuelo</h3></div></div>
+          <div class="step"><div class="num" style="background:var(--blue);">2</div><div class="body"><h3>Cambia los parámetros en VSCode</h3><p>Altura y segundos en el aire.</p></div></div>
+          <div class="step"><div class="num" style="background:var(--blue);">3</div><div class="body"><h3>Conecta al WiFi del Tello</h3></div></div>
+          <div class="step"><div class="num" style="background:var(--blue);">4</div><div class="body"><h3>Ejecuta el script: despegue y aterrizaje</h3></div></div>
+        </div>
+      </div>
+      <svg viewBox="0 0 200 160" width="100%">
+        <g class="drone-hover">
+          <line x1="100" y1="80" x2="35" y2="35" stroke="#58a6ff" stroke-width="5"/><line x1="100" y1="80" x2="165" y2="35" stroke="#58a6ff" stroke-width="5"/>
+          <line x1="100" y1="80" x2="35" y2="125" stroke="#58a6ff" stroke-width="5"/><line x1="100" y1="80" x2="165" y2="125" stroke="#58a6ff" stroke-width="5"/>
+          <rect x="82" y="66" width="36" height="28" rx="8" fill="#151b23" stroke="#58a6ff" stroke-width="3"/>
+          <circle cx="100" cy="80" r="6" fill="#39ff14"/>
+          <g class="prop"><ellipse cx="35" cy="35" rx="22" ry="5" fill="#e6edf3" opacity=".8"/></g>
+          <g class="prop"><ellipse cx="165" cy="35" rx="22" ry="5" fill="#e6edf3" opacity=".8"/></g>
+          <g class="prop"><ellipse cx="35" cy="125" rx="22" ry="5" fill="#e6edf3" opacity=".8"/></g>
+          <g class="prop"><ellipse cx="165" cy="125" rx="22" ry="5" fill="#e6edf3" opacity=".8"/></g>
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <section class="slide" data-n="15">
+    <div class="eyebrow-row"><span class="tag">Misión final</span><span class="level-pill" style="background:var(--orange);">DETECTA EL TOMATE</span></div>
+    <div class="grid-2">
+      <div class="mission-box orange">
+        <div class="step-list">
+          <div class="step"><div class="num" style="background:var(--orange);">1</div><div class="body"><h3>Filtra por color con HSV</h3></div></div>
+          <div class="step"><div class="num" style="background:var(--orange);">2</div><div class="body"><h3>Aplica thresholding</h3></div></div>
+          <div class="step"><div class="num" style="background:var(--orange);">3</div><div class="body"><h3>Dibuja un círculo alrededor del tomate</h3></div></div>
+        </div>
+      </div>
+      <div class="viewfinder" style="max-width:260px;">
+        <div class="corner tl" style="border-color:var(--orange);"></div><div class="corner tr" style="border-color:var(--orange);"></div><div class="corner bl" style="border-color:var(--orange);"></div><div class="corner br" style="border-color:var(--orange);"></div>
+        <svg viewBox="0 0 200 200" width="100%">
+          <defs><clipPath id="tomatoClip"><circle cx="100" cy="105" r="60"/></clipPath></defs>
+          <circle cx="100" cy="105" r="60" fill="#e5484d"/>
+          <path d="M85 50 Q100 30 118 48" stroke="#3fb950" stroke-width="8" fill="none" stroke-linecap="round"/>
+          <g clip-path="url(#tomatoClip)"><rect class="scan-line" x="30" y="48" width="140" height="4" fill="#39ff14" opacity=".9"/></g>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide hero-slide" data-n="16">
+    <div class="kicker-big">SESIÓN COMPLETADA</div>
+    <h1 style="font-size:clamp(32px,5vw,56px);">¡Ya tienen las<br>herramientas de un programador real!</h1>
+    <div class="badge-row" style="justify-content:center;margin-top:4vh;">
+      <span class="badge"><span class="check">&#10003;</span><span>VSCode</span></span>
+      <span class="badge"><span class="check">&#10003;</span><span>Git</span></span>
+      <span class="badge"><span class="check">&#10003;</span><span>GitHub</span></span>
+      <span class="badge"><span class="check">&#10003;</span><span>OpenCV</span></span>
+      <span class="badge"><span class="check">&#10003;</span><span>YOLO</span></span>
+    </div>
+    <p class="sub" style="margin-top:4vh;">La próxima misión: sorprendernos con lo que construyan. 🚀</p>
+    <div style="margin-top:3vh;width:170px;margin-left:auto;margin-right:auto;">
+      <svg viewBox="0 0 120 120" width="100%">
+        <rect x="28" y="18" width="64" height="64" rx="16" fill="none" stroke="#39ff14" stroke-width="4"/>
+        <line x1="60" y1="18" x2="60" y2="4" stroke="#39ff14" stroke-width="4"/><circle cx="60" cy="4" r="5" fill="#39ff14"/>
+        <g class="eye-group"><circle cx="60" cy="48" r="15" fill="none" stroke="#39ff14" stroke-width="4"/><circle class="pupil" cx="60" cy="48" r="5" fill="#39ff14"/></g>
+        <rect class="corner" x="18" y="8" width="16" height="16" fill="none" stroke="#f78166" stroke-width="3"/>
+        <rect class="corner" x="86" y="8" width="16" height="16" fill="none" stroke="#f78166" stroke-width="3"/>
+        <path d="M44 70 Q60 82 76 70" stroke="#e6edf3" stroke-width="4" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+  </section>
+
+</div>
+
+<div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+<div class="chrome-bottom">
+  <span id="counter">1 / 16</span>
+  <span class="navbtns">
+    <button class="navbtn" id="prevBtn" title="Anterior (←)">&#8592;</button>
+    <button class="navbtn" id="nextBtn" title="Siguiente (→)">&#8594;</button>
+  </span>
+</div>
+
+<script>
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const stageMax = {};
+  slides.forEach(s=>{ stageMax[s.dataset.n] = s.dataset.stages ? parseInt(s.dataset.stages,10) : 0; });
+  let idx = 0, stage = 0;
+
+  function applyStage(slide, st){
+    slide.querySelectorAll('[data-show-at]').forEach(el=>{
+      el.classList.toggle('revealed', st >= parseInt(el.dataset.showAt,10));
+    });
+    if(slide.dataset.n==='13'){
+      const bq = slide.querySelector('#bigQuestion');
+      const eb = slide.querySelector('.eyebrow-row');
+      if(bq) bq.classList.toggle('collapsed', st>=1);
+      if(eb) eb.classList.toggle('revealed', st>=1);
+    }
+  }
+
+  function updateMascotState(){
+    const mm = document.getElementById('miniMascot');
+    let st = 1;
+    if(idx >= 7) st = 2;
+    if(idx === slides.length-1) st = 3;
+    mm.className = 'mini-mascot state-'+st;
+  }
+
+  function updateChrome(){
+    document.getElementById('counter').textContent = (idx+1)+' / '+slides.length;
+    document.getElementById('progressFill').style.width = ((idx+1)/slides.length*100)+'%';
+    updateMascotState();
+  }
+
+  function flash(){
+    const f = document.getElementById('flashOverlay');
+    f.classList.remove('flash-active'); void f.offsetWidth; f.classList.add('flash-active');
+  }
+
+  function goToSlide(newIdx, dir){
+    const old = slides[idx], neu = slides[newIdx];
+    neu.classList.add('notrans');
+    neu.style.transform = dir>0 ? 'translateX(46px) scale(.98)' : 'translateX(-46px) scale(.98)';
+    neu.style.opacity = '0'; neu.style.pointerEvents='none'; neu.style.zIndex = 2;
+    void neu.offsetWidth;
+    neu.classList.remove('notrans');
+    old.style.zIndex = 3;
+    requestAnimationFrame(()=>{
+      old.style.transform = dir>0 ? 'translateX(-46px) scale(.98)' : 'translateX(46px) scale(.98)';
+      old.style.opacity = '0'; old.style.pointerEvents='none';
+      neu.style.transform = 'translateX(0) scale(1)'; neu.style.opacity = '1'; neu.style.pointerEvents='auto'; neu.style.zIndex = 3;
+    });
+    setTimeout(()=>{ old.style.zIndex=1; }, 520);
+    idx = newIdx; flash(); updateChrome();
+  }
+
+  function next(){
+    const n = slides[idx].dataset.n, max = stageMax[n]||0;
+    if(stage < max){ stage++; applyStage(slides[idx], stage); return; }
+    if(idx < slides.length-1){ goToSlide(idx+1, 1); stage = 0; applyStage(slides[idx], 0); }
+  }
+  function prev(){
+    if(stage > 0){ stage--; applyStage(slides[idx], stage); return; }
+    if(idx > 0){ goToSlide(idx-1, -1); const n = slides[idx].dataset.n; stage = stageMax[n]||0; applyStage(slides[idx], stage); }
+  }
+
+  window.addEventListener('keydown', e=>{
+    if(['ArrowRight','ArrowDown','PageDown',' '].includes(e.key)){ next(); e.preventDefault(); }
+    else if(['ArrowLeft','ArrowUp','PageUp'].includes(e.key)){ prev(); e.preventDefault(); }
+  });
+  document.getElementById('nextBtn').addEventListener('click', next);
+  document.getElementById('prevBtn').addEventListener('click', prev);
+
+  slides.forEach((s,i)=>{
+    if(i!==0){ s.style.opacity='0'; s.style.transform='translateX(46px) scale(.98)'; s.style.pointerEvents='none'; s.style.zIndex=1; }
+    else { s.style.opacity='1'; s.style.transform='translateX(0) scale(1)'; s.style.pointerEvents='auto'; s.style.zIndex=3; }
+  });
+  applyStage(slides[0], 0);
+  updateChrome();
+</script>
+</body>
+</html>
