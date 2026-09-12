@@ -11,11 +11,11 @@ import time
 ALTURA_ADICIONAL_CM = 30      # cuanto sube el dron tras despegar (20-500)
 SEGUNDOS_EN_EL_AIRE = 4         # cuanto tiempo flota antes de aterrizar
 
-tello = Tello()
-tello.connect()
-print(f"Bateria: {tello.get_battery()}%")
+tello = Tello() #Crea una instancia de la clase Tello
+tello.connect() #COnecta con el dron
+print(f"Bateria: {tello.get_battery()}%") # Obtiene el porcentaje de bateria restante y lo imprime en pantalla
 
-tello.takeoff()
-tello.move_up(ALTURA_ADICIONAL_CM)
-time.sleep(SEGUNDOS_EN_EL_AIRE)
-tello.land()
+tello.takeoff() # Hace que el dron despegue
+tello.move_up(ALTURA_ADICIONAL_CM) # Se eleva una altura adicional
+time.sleep(SEGUNDOS_EN_EL_AIRE) # Espera el tiempo especificado
+tello.land() # Hace que el dron aterrice
