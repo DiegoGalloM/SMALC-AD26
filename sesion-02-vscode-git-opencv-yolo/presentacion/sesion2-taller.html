@@ -67,6 +67,13 @@
   .wide-card h3{font-size:19px;margin-bottom:6px;}
   .wide-card p{font-size:14.5px;color:var(--text-dim);margin:0;}
 
+  .wide-card.compare{flex-direction:column;align-items:stretch;gap:10px;}
+  .imgbox{flex:1;min-height:86px;background:#000;border-radius:8px;border:1px solid var(--border);display:flex;align-items:center;justify-content:center;overflow:hidden;padding:6px;}
+  .ab-pair{flex:1;min-height:86px;display:flex;align-items:center;gap:8px;}
+  .ab-frame{flex:1;align-self:stretch;background:#0a0e14;border:1px solid var(--border);border-radius:8px;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  .ab-frame .ab-tag{position:absolute;top:5px;left:0;right:0;text-align:center;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:.08em;color:var(--text-dim);}
+  .ab-arrow{flex-shrink:0;color:var(--text-dim);font-size:17px;}
+
   .chip{background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--radius);padding:20px 16px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;justify-content:center;}
   .chip .ico{width:38px;height:38px;}
   .chip h3{font-size:16px;}
@@ -323,11 +330,42 @@
 
   <section class="slide" data-n="10" data-stages="3">
     <div class="eyebrow-row"><span class="tag">PARTE B &middot; Nivel 3</span><span class="level-pill">FUNCIONES REALES</span></div>
+    <p class="dim" style="margin:-0.5vh 0 1.6vh;font-size:15px;">Cada función cambia la imagen de una forma distinta — mira el <b class="accent-green">antes</b> y el <b class="accent-blue">después</b>.</p>
     <div class="grid-2x2">
-      <div class="wide-card" data-show-at="0"><img src="https://opencv24-python-tutorials.readthedocs.io/en/latest/_images/output.jpg" alt="Contornos"><div><h3>Contornos</h3><p>Dibuja el borde exacto de una forma detectada.</p></div></div>
-      <div class="wide-card" data-show-at="1"><img src="https://opencv24-python-tutorials.readthedocs.io/en/latest/_images/frame.jpg" alt="HSV"><div><h3>HSV</h3><p>Separa una imagen por color para poder "buscarlo".</p></div></div>
-      <div class="wide-card" data-show-at="2"><img src="https://opencv24-python-tutorials.readthedocs.io/en/latest/_images/threshold.jpg" alt="Thresholding"><div><h3>Thresholding</h3><p>Convierte la imagen en blanco y negro puro.</p></div></div>
-      <div class="wide-card" data-show-at="3"><img src="https://opencv24-python-tutorials.readthedocs.io/en/latest/_images/filter.jpg" alt="Kernels"><div><h3>Kernels</h3><p>Un filtro que recorre la imagen pixel por pixel.</p></div></div>
+      <div class="wide-card compare" data-show-at="0">
+        <div><h3>Contornos</h3><p>Dibuja el borde exacto de una forma detectada.</p></div>
+        <div class="ab-pair">
+          <div class="ab-frame">
+            <span class="ab-tag">ANTES</span>
+            <svg viewBox="0 0 100 100" width="62%">
+              <circle cx="50" cy="57" r="27" fill="#e5484d"/>
+              <path d="M41 31 Q50 21 59 30" stroke="#3fb950" stroke-width="5" fill="none" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <span class="ab-arrow">&#8594;</span>
+          <div class="ab-frame">
+            <span class="ab-tag" style="color:var(--green-bright);">DESPUÉS</span>
+            <svg viewBox="0 0 100 100" width="62%">
+              <circle cx="50" cy="57" r="27" fill="#e5484d" stroke="#39ff14" stroke-width="3"/>
+              <path d="M41 31 Q50 21 59 30" stroke="#3fb950" stroke-width="5" fill="none" stroke-linecap="round"/>
+              <circle cx="50" cy="30" r="2.6" fill="#39ff14"/><circle cx="77" cy="57" r="2.6" fill="#39ff14"/>
+              <circle cx="50" cy="84" r="2.6" fill="#39ff14"/><circle cx="23" cy="57" r="2.6" fill="#39ff14"/>
+            </svg>
+          </div>
+        </div>
+      </div>
+      <div class="wide-card compare" data-show-at="1">
+        <div><h3>HSV</h3><p>Separa una imagen por color para poder "buscarlo". A la izquierda el original, a la derecha el resultado.</p></div>
+        <div class="imgbox"><img src="https://opencv24-python-tutorials.readthedocs.io/en/latest/_images/frame.jpg" alt="HSV: imagen original, máscara de color y resultado final" style="width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain;border:none;border-radius:0;"></div>
+      </div>
+      <div class="wide-card compare" data-show-at="2">
+        <div><h3>Thresholding</h3><p>Convierte la imagen en blanco y negro puro. Compara la imagen original contra los resultados.</p></div>
+        <div class="imgbox"><img src="https://opencv24-python-tutorials.readthedocs.io/en/latest/_images/threshold.jpg" alt="Imagen original y distintos resultados de thresholding" style="width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain;border:none;border-radius:0;"></div>
+      </div>
+      <div class="wide-card compare" data-show-at="3">
+        <div><h3>Kernels</h3><p>Un filtro que recorre la imagen pixel por pixel: original vs. desenfoque.</p></div>
+        <div class="imgbox"><img src="https://opencv24-python-tutorials.readthedocs.io/en/latest/_images/filter.jpg" alt="Imagen original y resultado tras aplicar un kernel de desenfoque" style="width:auto;height:auto;max-width:100%;max-height:100%;object-fit:contain;border:none;border-radius:0;"></div>
+      </div>
     </div>
   </section>
 
@@ -357,7 +395,43 @@
     </div>
   </section>
 
-  <section class="slide" data-n="13" data-stages="6">
+  <section class="slide" data-n="13">
+    <div class="eyebrow-row"><span class="tag">PARTE B &middot; Nivel 4</span><span class="level-pill">ENTRENAR (RÁPIDO)</span></div>
+    <h2>Entrenar es más fácil de lo que parece</h2>
+    <div class="grid-2" style="margin-top:2.5vh;">
+      <div>
+        <p>El modelo que ya descargamos, <span class="accent-green" style="font-family:'JetBrains Mono',monospace;">yolo26n.pt</span>, viene <b>pre-entrenado</b> con el dataset COCO: ya reconoce 80 objetos comunes (personas, autos, animales...).</p>
+        <p style="margin-top:12px;">Para enseñarle algo nuevo — como un <b>tomate</b> — no empezamos desde cero: partimos de ese mismo archivo y le seguimos enseñando (esto se llama <i>fine-tuning</i>).</p>
+        <div style="margin-top:18px;display:flex;flex-direction:column;gap:8px;">
+          <p class="dim" style="font-family:'JetBrains Mono',monospace;font-size:13.5px;margin:0;">&#8594; 80 clases ya aprendidas (COCO)</p>
+          <p class="dim" style="font-family:'JetBrains Mono',monospace;font-size:13.5px;margin:0;">&#8594; la "n" de yolo26<b class="accent-blue">n</b> = "nano": la versión más chica y rápida</p>
+        </div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;">
+        <div class="window">
+          <div class="window-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="fname">terminal</span></div>
+          <div class="window-body" style="padding:14px 18px;">
+            <div class="term" style="font-size:14px;line-height:1.9;">
+              <div><span class="prompt">$</span> <span class="cmd">pip install ultralytics</span></div>
+              <div><span class="prompt">$</span> <span class="cmd">yolo train model=yolo26n.pt data=tomates.yaml epochs=50</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="window">
+          <div class="window-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="fname">entrenar.py</span></div>
+          <div class="window-body" style="padding:14px 18px;">
+            <div class="term" style="font-size:14px;line-height:1.9;">
+              <div><span class="dim">from ultralytics import YOLO</span></div>
+              <div><span class="cmd">model = YOLO("yolo26n.pt")</span> <span class="comment"># el mismo que ya usamos</span></div>
+              <div><span class="cmd">model.train(data="tomates.yaml", epochs=50)</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="slide" data-n="14" data-stages="6">
     <div class="eyebrow-row hide-until-revealed"><span class="tag">PARTE B &middot; Nivel 4</span><span class="level-pill">EN LA VIDA REAL</span></div>
     <div class="big-question" id="bigQuestion">¿Qué ejemplos de detección de objetos ya conoces?</div>
     <div class="grid-5" style="margin-top:2vh;">
@@ -369,7 +443,7 @@
     </div>
   </section>
 
-  <section class="slide" data-n="14">
+  <section class="slide" data-n="15">
     <div class="eyebrow-row"><span class="tag">Actividad de cierre</span><span class="level-pill" style="background:var(--blue);">VUELO CON TELLO</span></div>
     <div class="grid-2">
       <div class="mission-box blue">
@@ -395,7 +469,7 @@
     </div>
   </section>
 
-  <section class="slide" data-n="15">
+  <section class="slide" data-n="16">
     <div class="eyebrow-row"><span class="tag">Misión final</span><span class="level-pill" style="background:var(--orange);">DETECTA EL TOMATE</span></div>
     <div class="grid-2">
       <div class="mission-box orange">
@@ -417,7 +491,7 @@
     </div>
   </section>
 
-  <section class="slide hero-slide" data-n="16">
+  <section class="slide hero-slide" data-n="17">
     <div class="kicker-big">SESIÓN COMPLETADA</div>
     <h1 style="font-size:clamp(32px,5vw,56px);">¡Ya tienen las<br>herramientas de un programador real!</h1>
     <div class="badge-row" style="justify-content:center;margin-top:4vh;">
@@ -444,7 +518,7 @@
 
 <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
 <div class="chrome-bottom">
-  <span id="counter">1 / 16</span>
+  <span id="counter">1 / 17</span>
   <span class="navbtns">
     <button class="navbtn" id="prevBtn" title="Anterior (←)">&#8592;</button>
     <button class="navbtn" id="nextBtn" title="Siguiente (→)">&#8594;</button>
@@ -461,7 +535,7 @@
     slide.querySelectorAll('[data-show-at]').forEach(el=>{
       el.classList.toggle('revealed', st >= parseInt(el.dataset.showAt,10));
     });
-    if(slide.dataset.n==='13'){
+    if(slide.dataset.n==='14'){
       const bq = slide.querySelector('#bigQuestion');
       const eb = slide.querySelector('.eyebrow-row');
       if(bq) bq.classList.toggle('collapsed', st>=1);
