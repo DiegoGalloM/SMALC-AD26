@@ -4,5 +4,5 @@ __pycache__/
 .vscode/
 *.pt
 
-# Material del staff (respuestas y soluciones): solo vive en la rama "instructores"
-sesion-04-opencv-rally/instructores/
+# En esta rama (instructores) SÍ se guarda sesion-04-opencv-rally/instructores/.
+# En master está ignorada para que las respuestas no lleguen a los participantes.
