@@ -11,6 +11,7 @@ Modos (cambia con las teclas 1-5):
 Presiona 'q' para salir.
 """
 
+import cv2
 
 cap = cv2.VideoCapture(0)
 mode = 1
