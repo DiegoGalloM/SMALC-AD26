@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marcador del Rally</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0d1117; --bg-raised:#151b23; --bg-sunk:#0a0e14; --border:#2b3341;
+    --green:#3fb950; --green-bright:#39ff14; --blue:#58a6ff; --orange:#f78166; --gold:#f2cc60;
+    --text:#e6edf3; --text-dim:#8b949e; --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;min-height:100%;}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;}
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;
+    background-image:linear-gradient(rgba(63,185,80,0.05) 1px,transparent 1px),linear-gradient(90deg,rgba(63,185,80,0.05) 1px,transparent 1px);
+    background-size:44px 44px;}
+  .wrap{position:relative;max-width:1400px;margin:0 auto;padding:28px 24px 60px;}
+  header{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:22px;}
+  .kicker{font-family:'JetBrains Mono',monospace;color:var(--green-bright);font-size:14px;letter-spacing:.04em;}
+  h1{font-family:'Space Grotesk',sans-serif;font-size:clamp(30px,4vw,52px);margin:4px 0 0;line-height:1.05;}
+  .reloj{font-family:'JetBrains Mono',monospace;font-size:clamp(40px,6vw,76px);font-weight:700;color:var(--green-bright);
+    text-shadow:0 0 18px rgba(57,255,20,.35);text-align:right;line-height:1;}
+  .reloj.urgente{color:var(--orange);text-shadow:0 0 18px rgba(247,129,102,.45);}
+  .reloj-controles{display:flex;gap:8px;justify-content:flex-end;margin-top:8px;flex-wrap:wrap;}
+
+  button,input{font:inherit;}
+  .btn{background:var(--bg-raised);color:var(--text);border:1px solid var(--border);border-radius:9px;padding:8px 14px;cursor:pointer;font-size:14px;}
+  .btn:hover{border-color:var(--green);}
+  .btn.primario{background:var(--green);color:#0d1117;border-color:var(--green);font-weight:700;}
+  .btn.peligro:hover{border-color:var(--orange);color:var(--orange);}
+  input[type=text],input[type=number]{background:var(--bg-sunk);color:var(--text);border:1px solid var(--border);border-radius:9px;padding:8px 12px;font-size:15px;}
+  input[type=number]{width:74px;}
+
+  .tabla-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-raised);}
+  table{width:100%;border-collapse:collapse;min-width:820px;}
+  th,td{padding:12px 10px;text-align:center;border-bottom:1px solid var(--border);}
+  tr:last-child td{border-bottom:none;}
+  th{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--text-dim);font-weight:600;background:#11161d;}
+  th .pts{display:block;color:var(--green);font-size:12px;margin-top:3px;}
+  th.equipo-col,td.equipo-col{text-align:left;}
+  td.equipo-col{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(17px,1.6vw,22px);}
+  .pos{display:inline-flex;width:34px;height:34px;border-radius:50%;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;
+    font-weight:700;font-size:15px;background:var(--bg-sunk);border:1px solid var(--border);margin-right:10px;}
+  .pos.p1{background:var(--gold);color:#0d1117;border-color:var(--gold);}
+  .pos.p2{background:#c9d1d9;color:#0d1117;border-color:#c9d1d9;}
+  .pos.p3{background:#d18b47;color:#0d1117;border-color:#d18b47;}
+  .celda{width:100%;min-height:42px;border-radius:9px;border:1px dashed var(--border);background:transparent;color:var(--text-dim);cursor:pointer;font-size:18px;}
+  .celda:hover{border-color:var(--green);color:var(--text);}
+  .celda.hecho{background:rgba(63,185,80,.16);border:1px solid var(--green);color:var(--green-bright);font-weight:700;}
+  .celda .estrella{color:var(--gold);font-size:14px;margin-left:4px;}
+  .total{font-family:'JetBrains Mono',monospace;font-size:clamp(20px,2vw,28px);font-weight:700;color:var(--green-bright);}
+  .penal{display:inline-flex;align-items:center;gap:6px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--orange);}
+  .mini{padding:4px 9px;font-size:13px;border-radius:7px;}
+  tr.sube{animation:sube .6s ease;}
+  @keyframes sube{from{background:rgba(57,255,20,.18);}to{background:transparent;}}
+
+  .barra{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0;}
+  .leyenda{color:var(--text-dim);font-size:14px;line-height:1.6;margin-top:16px;}
+  .leyenda b{color:var(--text);}
+  .vacio{padding:40px;text-align:center;color:var(--text-dim);}
+
+  /* Modo proyector: se esconden los controles de edición */
+  body.proyector .solo-staff{display:none !important;}
+  body.proyector .celda{cursor:default;pointer-events:none;border-style:solid;}
+  body.proyector .celda:not(.hecho){opacity:.35;}
+
+  @media (max-width:640px){
+    .wrap{padding:18px 16px 40px;}
+    .reloj{text-align:left;}
+    .reloj-controles{justify-content:flex-start;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <div class="kicker">SMALC &middot; SESIÓN 4 &middot; RALLY DE VISIÓN</div>
+      <h1>Marcador en vivo</h1>
+    </div>
+    <div>
+      <div class="reloj" id="reloj">85:00</div>
+      <div class="reloj-controles solo-staff">
+        <input type="number" id="minutos" min="1" max="240" value="85" aria-label="Minutos del rally">
+        <button class="btn" id="btnFijar">Fijar</button>
+        <button class="btn primario" id="btnReloj">Iniciar</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="barra solo-staff">
+    <input type="text" id="nuevoEquipo" placeholder="Nombre del equipo" maxlength="30" aria-label="Nombre del equipo">
+    <button class="btn primario" id="btnAgregar">+ Agregar equipo</button>
+    <span style="flex:1"></span>
+    <button class="btn" id="btnProyector">Modo proyector (P)</button>
+    <button class="btn peligro" id="btnReiniciar">Reiniciar todo</button>
+  </div>
+  <div class="barra" id="barraProyector" style="display:none;justify-content:flex-end;">
+    <button class="btn mini" id="btnSalirProyector">Salir del modo proyector (P)</button>
+  </div>
+
+  <div class="tabla-wrap">
+    <table>
+      <thead><tr id="encabezado"></tr></thead>
+      <tbody id="cuerpo"></tbody>
+    </table>
+  </div>
+
+  <p class="leyenda solo-staff">
+    <b>Cómo se usa:</b> haz clic en la casilla de un reto cuando un equipo te dé la clave correcta (otro clic la quita).
+    El primer equipo en resolver cada reto se lleva <b>+50</b> <span style="color:var(--gold)">★</span>.
+    Una clave equivocada: botón <b>−10</b>. Todo se guarda solo en este navegador.
+  </p>
+</div>
+
+<script>
+  const RETOS = [
+    { n: 1, nombre: "Detective de pixeles", pts: 100 },
+    { n: 2, nombre: "Mensaje en la oscuridad", pts: 100 },
+    { n: 3, nombre: "El canal secreto", pts: 200 },
+    { n: 4, nombre: "Caza de colores", pts: 200 },
+    { n: 5, nombre: "Encuentra el tesoro", pts: 300 },
+    { n: 6, nombre: "Jefe final", pts: 500 },
+  ];
+  const BONUS_PRIMERO = 50, PENALIZACION = 10, CLAVE_GUARDADO = "smalc-rally-marcador";
+
+  let estado = cargar() || { equipos: [], reloj: { total: 85 * 60, restante: 85 * 60, corriendoDesde: null } };
+  let posicionesPrevias = {};
+
+  function cargar() {
+    try { return JSON.parse(localStorage.getItem(CLAVE_GUARDADO)); } catch (e) { return null; }
+  }
+  function guardar() {
+    try { localStorage.setItem(CLAVE_GUARDADO, JSON.stringify(estado)); } catch (e) { /* sin almacenamiento: seguimos en memoria */ }
+  }
+
+  function primeros() {
+    // Para cada reto, el id del equipo que lo resolvió primero
+    const res = {};
+    for (const r of RETOS) {
+      let mejor = null;
+      for (const eq of estado.equipos) {
+        const t = eq.resueltos[r.n];
+        if (t && (!mejor || t < mejor.t)) mejor = { id: eq.id, t };
+      }
+      if (mejor) res[r.n] = mejor.id;
+    }
+    return res;
+  }
+
+  function puntos(eq, prim) {
+    let total = -PENALIZACION * eq.penalizaciones;
+    for (const r of RETOS) {
+      if (eq.resueltos[r.n]) total += r.pts + (prim[r.n] === eq.id ? BONUS_PRIMERO : 0);
+    }
+    return total;
+  }
+
+  function escapar(texto) {
+    const d = document.createElement("div"); d.textContent = texto; return d.innerHTML;
+  }
+
+  function dibujar() {
+    const enc = document.getElementById("encabezado");
+    enc.innerHTML = '<th class="equipo-col">Equipo</th>' +
+      RETOS.map(r => `<th>RETO ${r.n}<br><span style="font-family:Inter;font-weight:500">${r.nombre}</span><span class="pts">${r.pts} pts</span></th>`).join("") +
+      '<th>Errores</th><th>Total</th><th class="solo-staff"></th>';
+
+    const prim = primeros();
+    const filas = estado.equipos.map(eq => ({ eq, total: puntos(eq, prim) }))
+      .sort((a, b) => b.total - a.total || a.eq.nombre.localeCompare(b.eq.nombre));
+
+    const cuerpo = document.getElementById("cuerpo");
+    if (!filas.length) {
+      cuerpo.innerHTML = `<tr><td colspan="${RETOS.length + 4}" class="vacio">Agrega los equipos para empezar.</td></tr>`;
+      return;
+    }
+    cuerpo.innerHTML = filas.map((f, i) => {
+      const lugar = i + 1;
+      const celdas = RETOS.map(r => {
+        const hecho = !!f.eq.resueltos[r.n];
+        const estrella = prim[r.n] === f.eq.id ? '<span class="estrella" title="Primero en resolverlo">★</span>' : "";
+        return `<td><button class="celda ${hecho ? "hecho" : ""}" data-eq="${f.eq.id}" data-reto="${r.n}" aria-label="Reto ${r.n}">${hecho ? "✓" : "·"}${estrella}</button></td>`;
+      }).join("");
+      const subio = posicionesPrevias[f.eq.id] !== undefined && lugar < posicionesPrevias[f.eq.id];
+      return `<tr class="${subio ? "sube" : ""}">
+        <td class="equipo-col"><span class="pos ${lugar <= 3 ? "p" + lugar : ""}">${lugar}</span>${escapar(f.eq.nombre)}</td>
+        ${celdas}
+        <td><span class="penal">${f.eq.penalizaciones ? "−" + PENALIZACION * f.eq.penalizaciones : "0"}
+          <button class="btn mini solo-staff" data-penal="${f.eq.id}" title="Clave equivocada">−10</button>
+          <button class="btn mini solo-staff" data-despenal="${f.eq.id}" title="Deshacer">↺</button></span></td>
+        <td class="total">${f.total}</td>
+        <td class="solo-staff"><button class="btn mini peligro" data-borrar="${f.eq.id}" title="Quitar equipo">✕</button></td>
+      </tr>`;
+    }).join("");
+    posicionesPrevias = {};
+    filas.forEach((f, i) => { posicionesPrevias[f.eq.id] = i + 1; });
+  }
+
+  document.getElementById("cuerpo").addEventListener("click", e => {
+    const b = e.target.closest("button");
+    if (!b) return;
+    const buscar = id => estado.equipos.find(eq => eq.id === id);
+    if (b.dataset.reto) {
+      const eq = buscar(b.dataset.eq), n = b.dataset.reto;
+      if (eq.resueltos[n]) delete eq.resueltos[n]; else eq.resueltos[n] = Date.now();
+    } else if (b.dataset.penal) {
+      buscar(b.dataset.penal).penalizaciones++;
+    } else if (b.dataset.despenal) {
+      const eq = buscar(b.dataset.despenal); eq.penalizaciones = Math.max(0, eq.penalizaciones - 1);
+    } else if (b.dataset.borrar) {
+      const eq = buscar(b.dataset.borrar);
+      if (!confirm(`¿Quitar al equipo "${eq.nombre}"?`)) return;
+      estado.equipos = estado.equipos.filter(x => x.id !== eq.id);
+    } else return;
+    guardar(); dibujar();
+  });
+
+  function agregarEquipo() {
+    const input = document.getElementById("nuevoEquipo");
+    const nombre = input.value.trim();
+    if (!nombre) return;
+    estado.equipos.push({ id: String(Date.now()) + Math.random().toString(16).slice(2, 6), nombre, resueltos: {}, penalizaciones: 0 });
+    input.value = ""; input.focus();
+    guardar(); dibujar();
+  }
+  document.getElementById("btnAgregar").addEventListener("click", agregarEquipo);
+  document.getElementById("nuevoEquipo").addEventListener("keydown", e => { if (e.key === "Enter") agregarEquipo(); });
+
+  document.getElementById("btnReiniciar").addEventListener("click", () => {
+    if (!confirm("¿Borrar TODOS los equipos y puntos?")) return;
+    estado = { equipos: [], reloj: { total: estado.reloj.total, restante: estado.reloj.total, corriendoDesde: null } };
+    guardar(); dibujar(); pintarReloj();
+  });
+
+  // --- Modo proyector ---
+  function alternarProyector() {
+    document.body.classList.toggle("proyector");
+    document.getElementById("barraProyector").style.display = document.body.classList.contains("proyector") ? "flex" : "none";
+  }
+  document.getElementById("btnProyector").addEventListener("click", alternarProyector);
+  document.getElementById("btnSalirProyector").addEventListener("click", alternarProyector);
+  document.addEventListener("keydown", e => {
+    if ((e.key === "p" || e.key === "P") && document.activeElement.tagName !== "INPUT") alternarProyector();
+  });
+
+  // --- Reloj ---
+  function restante() {
+    const r = estado.reloj;
+    if (!r.corriendoDesde) return r.restante;
+    return Math.max(0, r.restante - (Date.now() - r.corriendoDesde) / 1000);
+  }
+  function pintarReloj() {
+    const s = Math.ceil(restante());
+    const el = document.getElementById("reloj");
+    el.textContent = `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+    el.classList.toggle("urgente", s <= 300);
+    document.getElementById("btnReloj").textContent = estado.reloj.corriendoDesde ? "Pausar" : (s < estado.reloj.total ? "Seguir" : "Iniciar");
+  }
+  document.getElementById("btnReloj").addEventListener("click", () => {
+    const r = estado.reloj;
+    if (r.corriendoDesde) { r.restante = restante(); r.corriendoDesde = null; }
+    else if (r.restante > 0) { r.corriendoDesde = Date.now(); }
+    guardar(); pintarReloj();
+  });
+  document.getElementById("btnFijar").addEventListener("click", () => {
+    const min = Math.max(1, Math.min(240, parseInt(document.getElementById("minutos").value, 10) || 85));
+    estado.reloj = { total: min * 60, restante: min * 60, corriendoDesde: null };
+    guardar(); pintarReloj();
+  });
+  setInterval(() => {
+    pintarReloj();
+    if (estado.reloj.corriendoDesde && restante() === 0) {
+      estado.reloj.restante = 0; estado.reloj.corriendoDesde = null; guardar(); pintarReloj();
+    }
+  }, 250);
+
+  document.getElementById("minutos").value = Math.round(estado.reloj.total / 60);
+  dibujar(); pintarReloj();
+</script>
+</body>
+</html>

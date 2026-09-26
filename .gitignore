@@ -3,3 +3,6 @@ __pycache__/
 .DS_Store
 .vscode/
 *.pt
+
+# Material del staff (respuestas y soluciones): solo vive en la rama "instructores"
+sesion-04-opencv-rally/instructores/

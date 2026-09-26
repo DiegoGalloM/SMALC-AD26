@@ -1,0 +1,1243 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sesión 4 — OpenCV desde cero + Rally de visión</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0d1117; --bg-raised:#151b23; --bg-sunk:#0a0e14; --border:#2b3341;
+    --green:#3fb950; --green-bright:#39ff14; --blue:#58a6ff; --orange:#f78166; --gold:#f2cc60; --red:#ff6b6b;
+    --text:#e6edf3; --text-dim:#8b949e; --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;overflow:hidden;position:relative;}
+  body::before{
+    content:"";position:fixed;inset:0;
+    background-image:linear-gradient(rgba(63,185,80,0.05) 1px, transparent 1px),linear-gradient(90deg, rgba(63,185,80,0.05) 1px, transparent 1px);
+    background-size:44px 44px;
+    -webkit-mask-image:radial-gradient(ellipse 90% 80% at 50% 40%, #000 40%, transparent 85%);
+    mask-image:radial-gradient(ellipse 90% 80% at 50% 40%, #000 40%, transparent 85%);
+    pointer-events:none;z-index:1;
+  }
+  .deck{position:relative;width:100%;height:100vh;z-index:2;overflow:hidden;}
+  .slide{
+    position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;
+    padding:5vh 6vw 8vh 6vw;
+    transition:opacity .5s cubic-bezier(.4,0,.2,1), transform .5s cubic-bezier(.4,0,.2,1);
+  }
+  .notrans{transition:none !important;}
+
+  [data-show-at]{opacity:0;transform:translateY(16px) scale(.97);transition:opacity .45s ease, transform .45s ease;pointer-events:none;}
+  [data-show-at].revealed{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;}
+
+  .eyebrow-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:2.6vh;gap:12px;}
+  .tag{font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--text-dim);letter-spacing:.02em;}
+  .tag b{color:var(--green);}
+  .level-pill{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--bg);background:var(--green-bright);padding:5px 14px;border-radius:100px;font-weight:600;white-space:nowrap;}
+  .level-pill.blue{background:var(--blue);} .level-pill.orange{background:var(--orange);} .level-pill.gold{background:var(--gold);}
+
+  h1,h2,h3{font-family:'Space Grotesk',sans-serif;margin:0;font-weight:700;line-height:1.08;}
+  h1{font-size:clamp(34px,4.6vw,64px);}
+  h2{font-size:clamp(28px,3.4vw,46px);}
+  p{line-height:1.5;color:var(--text);font-size:clamp(16px,1.5vw,21px);margin:0;}
+  .dim{color:var(--text-dim);}
+  .mono{font-family:'JetBrains Mono',monospace;}
+  .accent-green{color:var(--green-bright);} .accent-blue{color:var(--blue);} .accent-orange{color:var(--orange);} .accent-red{color:var(--red);} .accent-gold{color:var(--gold);}
+
+  .window{background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:0 20px 50px -20px rgba(0,0,0,.6);}
+  .window-bar{display:flex;align-items:center;gap:8px;padding:10px 16px;background:#11161d;border-bottom:1px solid var(--border);}
+  .dot{width:11px;height:11px;border-radius:50%;}
+  .dot.r{background:#ff5f56;} .dot.y{background:#ffbd2e;} .dot.g{background:#27c93f;}
+  .window-bar .fname{margin-left:8px;font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--text-dim);}
+  .window-body{padding:16px 20px;}
+
+  pre.py{margin:0;font-family:'JetBrains Mono',monospace;font-size:clamp(12.5px,1.25vw,17px);line-height:1.7;white-space:pre;overflow-x:auto;color:var(--text);}
+  pre.py .c{color:var(--text-dim);font-style:italic;}
+  pre.py .s{color:#a5d6ff;}
+  pre.py .k{color:#ff7b72;}
+  pre.py .f{color:#d2a8ff;}
+  pre.py .n{color:#79c0ff;}
+  pre.py .hl{background:rgba(57,255,20,.12);box-shadow:inset 3px 0 0 var(--green-bright);display:inline-block;width:100%;}
+
+  .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:4.5vw;align-items:center;flex:1;min-height:0;}
+  .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
+  .stack{display:flex;flex-direction:column;gap:14px;}
+
+  .card{background:var(--bg-raised);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;}
+  .card h3{font-size:clamp(17px,1.5vw,21px);margin-bottom:6px;}
+  .card p{font-size:clamp(14px,1.2vw,16.5px);color:var(--text-dim);}
+
+  .step-list{display:flex;flex-direction:column;gap:14px;}
+  .step{display:flex;align-items:flex-start;gap:16px;}
+  .step .num{font-family:'JetBrains Mono',monospace;font-weight:700;color:var(--bg);background:var(--green-bright);min-width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+  .step .num.blue{background:var(--blue);} .step .num.orange{background:var(--orange);} .step .num.gold{background:var(--gold);}
+  .step .body h3{font-size:clamp(16px,1.45vw,19px);margin-bottom:3px;}
+  .step .body p{font-size:clamp(14px,1.2vw,16px);color:var(--text-dim);}
+
+  .mission-box{border:1.5px dashed var(--green);border-radius:var(--radius);padding:24px 28px;background:rgba(63,185,80,0.06);}
+  .mission-box.orange{border-color:var(--orange);background:rgba(247,129,102,0.07);}
+  .mission-box.blue{border-color:var(--blue);background:rgba(88,166,255,0.07);}
+  .mission-box.gold{border-color:var(--gold);background:rgba(242,204,96,0.07);}
+
+  .badge-row{display:flex;gap:12px;flex-wrap:wrap;}
+  .badge{display:flex;align-items:center;gap:9px;background:var(--bg-raised);border:1px solid var(--border);border-radius:100px;padding:8px 16px 8px 10px;}
+  .badge .check{width:22px;height:22px;border-radius:50%;background:var(--green);display:flex;align-items:center;justify-content:center;font-size:12px;color:#0d1117;font-weight:700;}
+  .badge span{font-family:'JetBrains Mono',monospace;font-size:14px;}
+  .chip-file{display:inline-flex;align-items:center;gap:8px;font-family:'JetBrains Mono',monospace;font-size:clamp(13px,1.2vw,16px);background:var(--bg-sunk);border:1px solid var(--border);border-radius:8px;padding:6px 12px;color:var(--green-bright);}
+
+  .hero-slide{align-items:center;text-align:center;}
+  .hero-slide .kicker-big{font-family:'JetBrains Mono',monospace;color:var(--green-bright);font-size:clamp(14px,1.4vw,19px);margin-bottom:14px;letter-spacing:.03em;}
+  .hero-slide h1{font-size:clamp(44px,6.6vw,92px);}
+  .hero-slide .sub{max-width:720px;margin:18px auto 0;font-size:clamp(16px,1.7vw,22px);color:var(--text-dim);}
+
+  .big-question{font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:clamp(30px,4.2vw,58px);text-align:center;line-height:1.15;}
+
+  /* Tablas */
+  table.t{width:100%;border-collapse:collapse;font-size:clamp(14px,1.3vw,18px);}
+  table.t th,table.t td{padding:10px 12px;border-bottom:1px solid var(--border);text-align:left;}
+  table.t th{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text-dim);font-weight:600;}
+  table.t td.pts{font-family:'JetBrains Mono',monospace;color:var(--green-bright);font-weight:700;text-align:right;}
+
+  /* Agenda */
+  .agenda{display:flex;flex-direction:column;gap:10px;max-width:900px;}
+  .agenda .fila{display:grid;grid-template-columns:150px 1fr;gap:18px;align-items:center;background:var(--bg-raised);border:1px solid var(--border);border-radius:12px;padding:14px 18px;}
+  .agenda .hora{font-family:'JetBrains Mono',monospace;color:var(--green-bright);font-size:clamp(14px,1.3vw,17px);}
+  .agenda .fila.rally{border-color:var(--orange);background:rgba(247,129,102,.08);}
+  .agenda .fila.rally .hora{color:var(--orange);}
+
+  /* Demos interactivas */
+  canvas.demo{width:100%;height:auto;display:block;border-radius:10px;border:1px solid var(--border);background:#000;image-rendering:auto;}
+  canvas.demo.mitad{width:auto;max-width:100%;max-height:37vh;margin:0 auto;}
+  .controles{display:flex;flex-direction:column;gap:10px;margin-top:12px;}
+  .ctrl{display:grid;grid-template-columns:90px 1fr 56px;gap:12px;align-items:center;font-family:'JetBrains Mono',monospace;font-size:14px;}
+  .ctrl output{color:var(--green-bright);font-weight:700;text-align:right;}
+  input[type=range]{width:100%;accent-color:var(--green-bright);}
+  .presets{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;}
+  .presets button{font-family:'JetBrains Mono',monospace;font-size:13px;background:var(--bg-sunk);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:6px 12px;cursor:pointer;}
+  .presets button:hover{border-color:var(--green);}
+  .etiqueta{font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--text-dim);margin:0 0 6px;letter-spacing:.04em;}
+  .swatch{width:100%;aspect-ratio:16/9;border-radius:12px;border:1px solid var(--border);}
+  .valor-grande{font-family:'JetBrains Mono',monospace;font-size:clamp(22px,2.6vw,36px);font-weight:700;margin-top:12px;}
+
+  /* Matriz de números */
+  .matriz{display:grid;grid-template-columns:repeat(16,1fr);gap:2px;width:min(46vh,520px);aspect-ratio:1;font-family:'JetBrains Mono',monospace;}
+  .matriz div{display:flex;align-items:center;justify-content:center;font-size:clamp(7px,0.95vh,11px);color:var(--text-dim);background:var(--bg-sunk);border-radius:2px;transition:background .9s ease, color .6s ease;}
+  .matriz.revelada div{color:transparent;}
+
+  /* Rejilla fila/columna */
+  .rejilla{display:grid;grid-template-columns:40px repeat(8,1fr);gap:3px;font-family:'JetBrains Mono',monospace;font-size:13px;max-width:460px;width:100%;}
+  .rejilla div{aspect-ratio:1;display:flex;align-items:center;justify-content:center;border-radius:4px;}
+  .rejilla .celda{background:var(--bg-raised);border:1px solid var(--border);}
+  .rejilla .elegida{background:var(--green-bright);border-color:var(--green-bright);box-shadow:0 0 16px rgba(57,255,20,.5);}
+  .rejilla .fila-hl{background:rgba(88,166,255,.18);}
+  .rejilla .col-hl{background:rgba(247,129,102,.18);}
+  .rejilla .ind{color:var(--text-dim);}
+
+  /* Ciclo */
+  .ciclo{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:center;}
+  .ciclo .paso{background:var(--bg-raised);border:1.5px solid var(--border);border-radius:14px;padding:16px 20px;text-align:center;min-width:150px;}
+  .ciclo .paso h3{font-size:clamp(18px,1.7vw,24px);}
+  .ciclo .paso p{font-size:14px;color:var(--text-dim);margin-top:4px;}
+  .ciclo .paso.activo{border-color:var(--green-bright);box-shadow:0 0 22px rgba(57,255,20,.25);}
+  .ciclo .flecha{color:var(--text-dim);font-size:26px;}
+
+  /* Animaciones heredadas de la Sesión 2 */
+  .eye-group{transform-box:fill-box;transform-origin:center;animation:blinkEye 5.5s ease-in-out infinite;}
+  @keyframes blinkEye{0%,90%,100%{transform:scaleY(1);}94%{transform:scaleY(.12);}}
+  .pupil{transform-box:fill-box;transform-origin:center;animation:lookAround 4.5s ease-in-out infinite;}
+  @keyframes lookAround{0%,100%{transform:translateX(0);}20%{transform:translateX(-3px);}55%{transform:translateX(3px);}80%{transform:translateX(0);}}
+  .drone-hover{transform-box:fill-box;transform-origin:center;animation:hover 2.6s ease-in-out infinite;}
+  @keyframes hover{0%,100%{transform:translateY(0);}50%{transform:translateY(-9px);}}
+  .prop{transform-box:fill-box;transform-origin:center;animation:spin .18s linear infinite;}
+  @keyframes spin{from{transform:rotate(0);}to{transform:rotate(180deg);}}
+  .viewfinder{position:relative;width:100%;max-width:440px;margin:0 auto;}
+  .corner{position:absolute;width:34px;height:34px;border:4px solid var(--orange);animation:cornerPulse 2s ease-in-out infinite;}
+  .corner.tl{top:-10px;left:-10px;border-right:none;border-bottom:none;}
+  .corner.tr{top:-10px;right:-10px;border-left:none;border-bottom:none;}
+  .corner.bl{bottom:-10px;left:-10px;border-right:none;border-top:none;}
+  .corner.br{bottom:-10px;right:-10px;border-left:none;border-top:none;}
+  @keyframes cornerPulse{0%,100%{opacity:1;}50%{opacity:.45;}}
+  .sigue{animation:sigue 5s ease-in-out infinite;}
+  @keyframes sigue{0%,100%{transform:translate(0,0);}25%{transform:translate(120px,-30px);}50%{transform:translate(60px,50px);}75%{transform:translate(-80px,10px);}}
+
+  .progress-track{position:fixed;bottom:0;left:0;width:100%;height:4px;background:var(--bg-raised);z-index:20;}
+  .progress-fill{height:100%;background:var(--green-bright);width:0;transition:width .35s ease;box-shadow:0 0 10px var(--green-bright);}
+  .chrome-bottom{position:fixed;bottom:14px;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:0 22px;z-index:20;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text-dim);pointer-events:none;}
+  .navbtns{display:flex;gap:8px;pointer-events:auto;}
+  .navbtn{width:38px;height:38px;border:1px solid var(--border);background:var(--bg-raised);color:var(--text);border-radius:8px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;}
+  .navbtn:hover{border-color:var(--green);}
+  #flashOverlay{position:fixed;inset:0;background:var(--green-bright);opacity:0;pointer-events:none;z-index:60;}
+  .flash-active{animation:flashPulse .45s ease;}
+  @keyframes flashPulse{0%{opacity:0;}14%{opacity:.10;}100%{opacity:0;}}
+  .mini-mascot{position:fixed;left:24px;bottom:50px;width:54px;z-index:15;opacity:.94;}
+
+  @media (max-width:900px){
+    .slide{padding:4vh 16px 10vh;overflow-y:auto;justify-content:flex-start;}
+    .grid-2,.grid-3{grid-template-columns:1fr;gap:20px;}
+    .agenda .fila{grid-template-columns:1fr;gap:4px;}
+    .mini-mascot{display:none;}
+  }
+  @media (prefers-reduced-motion: reduce){
+    .slide,[data-show-at]{transition:none;}
+    .eye-group,.pupil,.drone-hover,.prop,.corner,.sigue{animation:none;}
+  }
+</style>
+</head>
+<body>
+<div id="flashOverlay"></div>
+
+<div class="mini-mascot" aria-hidden="true">
+  <svg viewBox="0 0 120 120" width="100%">
+    <rect x="28" y="18" width="64" height="64" rx="16" fill="none" stroke="#58a6ff" stroke-width="4"/>
+    <line x1="60" y1="18" x2="60" y2="4" stroke="#58a6ff" stroke-width="4"/><circle cx="60" cy="4" r="5" fill="#58a6ff"/>
+    <g class="eye-group"><circle cx="60" cy="48" r="15" fill="none" stroke="#39ff14" stroke-width="4"/><circle class="pupil" cx="60" cy="48" r="5" fill="#39ff14"/></g>
+    <path d="M46 70 Q60 80 74 70" stroke="#e6edf3" stroke-width="4" fill="none" stroke-linecap="round"/>
+  </svg>
+</div>
+
+<div class="deck">
+
+  <!-- 1. PORTADA -->
+  <section class="slide hero-slide">
+    <div class="kicker-big">TALLER DE PROGRAMACIÓN &middot; SESIÓN 4</div>
+    <h1><span class="accent-green">OpenCV</span> desde cero<br>+ <span class="accent-orange">Rally de visión</span></h1>
+    <p class="sub">Hoy le enseñamos a la computadora a <b>ver</b>. Y luego... competimos.</p>
+    <div style="margin-top:4vh;width:170px;margin-left:auto;margin-right:auto;">
+      <svg viewBox="0 0 120 120" width="100%">
+        <rect x="28" y="18" width="64" height="64" rx="16" fill="none" stroke="#58a6ff" stroke-width="4"/>
+        <line x1="60" y1="18" x2="60" y2="4" stroke="#58a6ff" stroke-width="4"/><circle cx="60" cy="4" r="5" fill="#58a6ff"/>
+        <g class="eye-group"><circle cx="60" cy="48" r="15" fill="none" stroke="#39ff14" stroke-width="4"/><circle class="pupil" cx="60" cy="48" r="5" fill="#39ff14"/></g>
+        <path d="M46 70 Q60 80 74 70" stroke="#e6edf3" stroke-width="4" fill="none" stroke-linecap="round"/>
+      </svg>
+    </div>
+  </section>
+
+  <!-- 2. AGENDA -->
+  <section class="slide">
+    <div class="eyebrow-row"><span class="tag">EL PLAN DE HOY</span><span class="level-pill">4 HORAS</span></div>
+    <h2 style="margin-bottom:3vh;">¿Qué vamos a hacer?</h2>
+    <div class="agenda">
+      <div class="fila"><span class="hora">0:00 – 0:15</span><span>¿Cómo ve una computadora? <span class="dim">(demo en vivo)</span></span></div>
+      <div class="fila"><span class="hora">0:15 – 2:00</span><span><b>7 mini-lecciones</b> de OpenCV, cada una con su mini-reto</span></div>
+      <div class="fila"><span class="hora">2:00 – 2:15</span><span>Receso</span></div>
+      <div class="fila rally"><span class="hora">2:15 – 3:40</span><span><b>RALLY DE VISIÓN</b> &middot; 6 retos, por equipos, con marcador en vivo</span></div>
+      <div class="fila"><span class="hora">3:40 – 4:00</span><span>Premiación y ¿qué sigue?</span></div>
+    </div>
+  </section>
+
+  <!-- 3. GANCHO -->
+  <section class="slide" data-stages="1">
+    <div class="big-question">¿Cómo ve el mundo<br>una <span class="accent-green">computadora</span>?</div>
+    <div data-show-at="1" style="margin-top:5vh;text-align:center;">
+      <p class="dim">Demo en vivo con la cámara:</p>
+      <div style="margin-top:12px;display:flex;justify-content:center;"><span class="chip-file">▶ demo/demo_gancho.py</span></div>
+      <div class="badge-row" style="justify-content:center;margin-top:18px;">
+        <span class="badge"><span class="check">1</span><span>normal</span></span>
+        <span class="badge"><span class="check">2</span><span>grises</span></span>
+        <span class="badge"><span class="check">3</span><span>blanco y negro</span></span>
+        <span class="badge"><span class="check">4</span><span>bordes</span></span>
+        <span class="badge"><span class="check">5</span><span>caricatura</span></span>
+        <span class="badge"><span class="check">6</span><span>térmica</span></span>
+        <span class="badge"><span class="check">7</span><span>pixelado</span></span>
+        <span class="badge"><span class="check">8</span><span>rastreador</span></span>
+      </div>
+      <p style="margin-top:3vh;">Al final del día, <b class="accent-green">ustedes van a saber programar casi todo esto.</b></p>
+    </div>
+  </section>
+
+  <!-- 4. MISIÓN -->
+  <section class="slide">
+    <div class="eyebrow-row"><span class="tag">LA MISIÓN DE RESCATE</span><span class="level-pill blue">¿POR QUÉ?</span></div>
+    <div class="grid-2">
+      <div>
+        <h2>El dron necesita <span class="accent-blue">ojos</span></h2>
+        <p style="margin-top:16px;">Un robot hace siempre lo mismo, una y otra vez:</p>
+        <div class="ciclo" style="margin-top:3vh;justify-content:flex-start;">
+          <div class="paso activo"><h3 class="accent-green">1. Percibir</h3><p>¿qué veo?</p></div>
+          <span class="flecha">→</span>
+          <div class="paso"><h3>2. Decidir</h3><p>¿qué hago?</p></div>
+          <span class="flecha">→</span>
+          <div class="paso"><h3>3. Actuar</h3><p>¡lo hago!</p></div>
+        </div>
+        <p class="dim" style="margin-top:3vh;">Hoy nos toca el paso 1: que la computadora <b>vea</b> colores, formas y objetos.</p>
+      </div>
+      <svg viewBox="0 0 200 160" width="100%" aria-hidden="true">
+        <g class="drone-hover">
+          <line x1="100" y1="80" x2="35" y2="35" stroke="#58a6ff" stroke-width="5"/><line x1="100" y1="80" x2="165" y2="35" stroke="#58a6ff" stroke-width="5"/>
+          <line x1="100" y1="80" x2="35" y2="125" stroke="#58a6ff" stroke-width="5"/><line x1="100" y1="80" x2="165" y2="125" stroke="#58a6ff" stroke-width="5"/>
+          <rect x="82" y="66" width="36" height="28" rx="8" fill="#151b23" stroke="#58a6ff" stroke-width="3"/>
+          <circle cx="100" cy="80" r="7" fill="#39ff14"/>
+          <g class="prop"><ellipse cx="35" cy="35" rx="22" ry="5" fill="#e6edf3" opacity=".8"/></g>
+          <g class="prop"><ellipse cx="165" cy="35" rx="22" ry="5" fill="#e6edf3" opacity=".8"/></g>
+          <g class="prop"><ellipse cx="35" cy="125" rx="22" ry="5" fill="#e6edf3" opacity=".8"/></g>
+          <g class="prop"><ellipse cx="165" cy="125" rx="22" ry="5" fill="#e6edf3" opacity=".8"/></g>
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <!-- 5. OPENCV + CÓMO TRABAJAMOS -->
+  <section class="slide">
+    <div class="eyebrow-row"><span class="tag">ANTES DE EMPEZAR</span><span class="level-pill">OPENCV</span></div>
+    <div class="grid-2">
+      <div>
+        <h2>OpenCV: la caja de herramientas para <span class="accent-green">ver</span></h2>
+        <p style="margin-top:14px;">Es una librería de Python para trabajar con imágenes y video. La usan robots, autos autónomos, celulares...</p>
+        <div class="window" style="margin-top:3vh;">
+          <div class="window-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="fname">terminal</span></div>
+          <div class="window-body"><pre class="py">pip install opencv-python</pre></div>
+        </div>
+      </div>
+      <div class="stack">
+        <div class="card"><h3>1. Abre la carpeta del taller</h3><p>En VSCode: Archivo → Abrir carpeta → <span class="mono">sesion-04-opencv-rally</span></p></div>
+        <div class="card"><h3>2. Busca el lápiz ✏️</h3><p>Cada archivo tiene UNA función cortita marcada con <span class="mono accent-green">✏️ COMPLETA ESTA FUNCIÓN</span>. La pista casi te da la respuesta.</p></div>
+        <div class="card"><h3>3. Dale al botón ▶</h3><p>Aunque no la completes, el programa corre: así ves qué le falta.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. LECCIÓN 1: MATRIZ -->
+  <section class="slide" data-stages="1" id="slideMatriz">
+    <div class="eyebrow-row"><span class="tag">LECCIÓN 1 &middot; <b>Una imagen es una tabla de números</b></span><span class="level-pill">PIXELES</span></div>
+    <div class="grid-2">
+      <div>
+        <h2>¿Qué ve la computadora?</h2>
+        <p style="margin-top:14px;">Para ella, una imagen es solo una <b>tabla de números</b>. Cada número es un <b class="accent-green">pixel</b>:</p>
+        <p class="mono" style="margin-top:14px;"><span style="color:#666">0 = negro</span> &nbsp;·&nbsp; <span style="color:#aaa">128 = gris</span> &nbsp;·&nbsp; <span>255 = blanco</span></p>
+        <p style="margin-top:3vh;" class="big-question" id="preguntaMatriz">¿Qué es? 🤔</p>
+        <p data-show-at="1" style="margin-top:2vh;font-size:clamp(20px,2vw,28px);" class="accent-green"><b>¡Un dron visto desde arriba!</b></p>
+      </div>
+      <div style="display:flex;justify-content:center;"><div class="matriz" id="matriz"></div></div>
+    </div>
+  </section>
+
+  <!-- 7. LECCIÓN 1: FILA Y COLUMNA -->
+  <section class="slide">
+    <div class="eyebrow-row"><span class="tag">LECCIÓN 1 &middot; Una imagen es una tabla de números</span><span class="level-pill">FILA, COLUMNA</span></div>
+    <div class="grid-2">
+      <div>
+        <h2>Cada pixel tiene su <span class="accent-blue">fila</span> y su <span class="accent-orange">columna</span></h2>
+        <div class="window" style="margin-top:3vh;">
+          <div class="window-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="fname">python</span></div>
+          <div class="window-body"><pre class="py">imagen = cv2.imread("imagenes/frutas.png")
+print(imagen.shape)        # (540, 800, 3)
+                           # alto, ancho, colores
+
+pixel = imagen[2, 5]       # fila 2, columna 5</pre></div>
+        </div>
+        <p style="margin-top:2.4vh;">⚠️ <b>Primero la fila</b> (hacia abajo ↓), <b>luego la columna</b> (hacia la derecha →).</p>
+      </div>
+      <div style="display:flex;justify-content:center;"><div class="rejilla" id="rejilla"></div></div>
+    </div>
+  </section>
+
+  <!-- 8. MISIÓN 1 -->
+  <section class="slide">
+    <div class="eyebrow-row"><span class="tag">LECCIÓN 1 &middot; A programar</span><span class="level-pill">MINI-RETO 1</span></div>
+    <div class="grid-2">
+      <div class="window">
+        <div class="window-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="fname">lecciones/01_matriz.py</span></div>
+        <div class="window-body"><pre class="py"># ✏️ COMPLETA ESTA FUNCIÓN (1 línea)
+def leer_pixel(imagen, fila, columna):
+    # Pista: return imagen[fila, columna]
+    return None</pre></div>
+      </div>
+      <div class="mission-box">
+        <div class="step-list">
+          <div class="step"><div class="num">1</div><div class="body"><h3>Corre el archivo y adivina la imagen misteriosa</h3></div></div>
+          <div class="step"><div class="num">2</div><div class="body"><h3>Completa <span class="mono">leer_pixel</span></h3></div></div>
+          <div class="step"><div class="num">3</div><div class="body"><h3>Cambia FILA y COLUMNA</h3><p>Encuentra el valor de un limón, una mora y el fondo.</p></div></div>
+          <div class="step"><div class="num">★</div><div class="body"><h3>Herramienta: inspector de pixeles</h3><p>Corre <span class="mono">herramientas/inspector_pixeles.py</span> y haz clic en la imagen.</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9. LECCIÓN 2: BGR -->
+  <section class="slide">
+    <div class="eyebrow-row"><span class="tag">LECCIÓN 2 &middot; <b>Colores y canales</b></span><span class="level-pill">BGR</span></div>
+    <div class="grid-2">
+      <div>
+        <h2>Un pixel de color = <span class="accent-green">3 números</span></h2>
+        <p style="margin-top:14px;">Cuánto <span class="accent-blue">azul</span>, cuánto <span class="accent-green">verde</span> y cuánto <span class="accent-red">rojo</span> tiene. Cada uno de 0 a 255.</p>
+        <p style="margin-top:14px;">⚠️ OpenCV los guarda <b>AL REVÉS</b>: no es RGB, es <b class="accent-orange">BGR</b>.</p>
+        <div class="controles">
+          <div class="ctrl"><span class="accent-blue">B azul</span><input type="range" min="0" max="255" value="40" id="mixB" aria-label="Azul"><output id="mixBv">40</output></div>
+          <div class="ctrl"><span class="accent-green">G verde</span><input type="range" min="0" max="255" value="40" id="mixG" aria-label="Verde"><output id="mixGv">40</output></div>
+          <div class="ctrl"><span class="accent-red">R rojo</span><input type="range" min="0" max="255" value="210" id="mixR" aria-label="Rojo"><output id="mixRv">210</output></div>
+        </div>
+        <div class="presets" id="mixPresets">
+          <button data-c="40,40,210">rojo</button><button data-c="55,180,70">verde</button><button data-c="170,70,40">azul</button>
+          <button data-c="40,210,240">amarillo</button><button data-c="255,255,255">blanco</button><button data-c="0,0,0">negro</button>
+        </div>
+      </div>
+      <div>
+        <div class="swatch" id="mixSwatch"></div>
+        <div class="valor-grande" id="mixTexto">[40, 40, 210]</div>
+        <p class="dim mono" style="margin-top:6px;">así lo imprime OpenCV: [azul, verde, rojo]</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10. LECCIÓN 2: CANALES -->
+  <section class="slide">
+    <div class="eyebrow-row"><span class="tag">LECCIÓN 2 &middot; Colores y canales</span><span class="level-pill">CANALES</span></div>
+    <h2>Separar los 3 canales</h2>
+    <p style="margin-top:10px;" class="dim">Cada canal es una imagen en grises. <b style="color:var(--text)">Blanco = mucho de ese color.</b> ¿En qué canal brillan las manzanas? ¿Y las moras?</p>
+    <div class="grid-3" style="grid-template-columns:repeat(4,1fr);margin-top:2.4vh;">
+      <div><p class="etiqueta">ORIGINAL</p><canvas class="demo" id="canOriginal" width="400" height="270"></canvas></div>
+      <div><p class="etiqueta accent-blue">CANAL AZUL</p><canvas class="demo" id="canAzul" width="400" height="270"></canvas></div>
+      <div><p class="etiqueta accent-green">CANAL VERDE</p><canvas class="demo" id="canVerde" width="400" height="270"></canvas></div>
+      <div><p class="etiqueta accent-red">CANAL ROJO</p><canvas class="demo" id="canRojo" width="400" height="270"></canvas></div>
+    </div>
+    <div class="window" style="margin-top:2.6vh;max-width:760px;">
+      <div class="window-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="fname">python</span></div>
+      <div class="window-body"><pre class="py">azul, verde, rojo = cv2.split(frutas)     # ¡en orden BGR!
+cv2.imshow("canal rojo", rojo)</pre></div>
+    </div>
+  </section>
+
+  <!-- 11. MISIÓN 2 -->
+  <section class="slide" data-stages="1">
+    <div class="eyebrow-row"><span class="tag">LECCIÓN 2 &middot; A programar</span><span class="level-pill">MINI-RETO 2</span></div>
+    <div class="grid-2">
+      <div class="stack">
+        <div class="window">
+          <div class="window-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="fname">recortar y pintar</span></div>
+          <div class="window-body"><pre class="py">recorte = frutas[85:255, 85:255]     # [filas, columnas]
+
+frutas[0:50, 0:100] = (0, 0, 0)     # pinta un cuadro negro</pre></div>
+        </div>
+        <div class="window">
+          <div class="window-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="fname">lecciones/02_colores_canales.py</span></div>
+          <div class="window-body"><pre class="py"># ✏️ COMPLETA ESTA FUNCIÓN (1 línea)
+def pintar(imagen, fila1, fila2, columna1, columna2, color):
+    # Pista: imagen[fila1:fila2, columna1:columna2] = color
+    return imagen</pre></div>
+        </div>
+      </div>
+      <div style="text-align:center;">
+        <h2 style="font-size:clamp(24px,2.6vw,36px);">¡Ponle lentes de sol al robot! 😎</h2>
+        <svg viewBox="0 0 320 240" width="80%" style="margin-top:2vh;" aria-hidden="true">
+          <rect x="0" y="0" width="320" height="240" rx="14" fill="#e8ecee"/>
+          <line x1="160" y1="48" x2="160" y2="22" stroke="#3fb950" stroke-width="5"/><circle cx="160" cy="19" r="9" fill="#e63c3c"/>
+          <rect x="85" y="48" width="150" height="130" rx="22" fill="#15191f" stroke="#3fb950" stroke-width="4"/>
+          <rect x="115" y="85" width="28" height="28" fill="#39ff14"/><rect x="178" y="85" width="28" height="28" fill="#39ff14"/>
+          <rect data-show-at="1" x="108" y="80" width="105" height="38" fill="#000"/>
+          <path d="M125 140 Q160 160 195 140" stroke="#e6edf3" stroke-width="5" fill="none" stroke-linecap="round"/>
+        </svg>
+        <p class="dim" style="margin-top:1.4vh;">Usa el inspector de pixeles para encontrar dónde están los ojos.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12. LECCIÓN 3: THRESHOLD -->
+  <section class="slide">
+    <div class="eyebrow-row"><span class="tag">LECCIÓN 3 &middot; <b>Grises y blanco y negro</b></span><span class="level-pill">THRESHOLD</span></div>
+    <div class="grid-2">
+      <div>
+        <h2>El <span class="accent-green">umbral</span> decide</h2>
+        <p style="margin-top:12px;">Primero pasamos a grises (1 número por pixel). Luego, cada pixel:</p>
+        <p style="margin-top:10px;"><b>más claro</b> que el umbral → <b>blanco</b> &nbsp;·&nbsp; <b>más oscuro</b> → <b style="color:#888">negro</b></p>
+        <div class="window" style="margin-top:2.4vh;">
+          <div class="window-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="fname">lecciones/03_grises_threshold.py</span></div>
+          <div class="window-body"><pre class="py">gris = cv2.cvtColor(manzana, cv2.COLOR_BGR2GRAY)
+_, resultado = cv2.threshold(gris, UMBRAL, 255, cv2.THRESH_BINARY)</pre></div>
+        </div>
+        <div class="controles">
+          <div class="ctrl"><span>UMBRAL</span><input type="range" min="0" max="255" value="127" id="umbral" aria-label="Umbral"><output id="umbralV">127</output></div>
+        </div>
+        <p class="dim" style="margin-top:8px;">Mini-reto: ¿qué umbral deja la manzana completa pero <b>sin la sombra</b>?</p>
+      </div>
+      <div class="stack">
+        <canvas class="demo mitad" id="thOriginal" width="400" height="300"></canvas>
+        <canvas class="demo mitad" id="thResultado" width="400" height="300"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13. LECCIÓN 4: VIDEO -->
+  <section class="slide">
+    <div class="eyebrow-row"><span class="tag">LECCIÓN 4 &middot; <b>Video en vivo</b></span><span class="level-pill">CÁMARA</span></div>
+    <h2>Un video son <span class="accent-green">muchas fotos</span>, una tras otra</h2>
+    <div class="ciclo" style="margin-top:3vh;">
+      <div class="paso activo"><h3>1. LEER</h3><p>una foto de la cámara</p></div><span class="flecha">→</span>
+      <div class="paso"><h3>2. CAMBIAR</h3><p>aplicarle un efecto</p></div><span class="flecha">→</span>
+      <div class="paso"><h3>3. MOSTRAR</h3><p>en una ventana</p></div><span class="flecha">→</span>
+      <div class="paso"><h3>4. ¿q?</h3><p>si no, ¡otra vez!</p></div><span class="flecha">↺</span>
+    </div>
+    <div class="grid-2" style="margin-top:3vh;align-items:start;">
+      <div class="window">
+        <div class="window-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="fname">lecciones/04_video_en_vivo.py</span></div>
+        <div class="window-body"><pre class="py">camara = cv2.VideoCapture(0)
+
+while True:
+    ok, foto = camara.read()        # 1) LEER
+    foto = efecto(foto)             # 2) CAMBIAR
+    cv2.imshow("camara", foto)      # 3) MOSTRAR
+    if cv2.waitKey(1) == ord("q"):  # 4) ¿q?
+        break</pre></div>
+      </div>
+      <div class="mission-box">
+        <div class="step-list">
+          <div class="step"><div class="num">1</div><div class="body"><h3>Completa <span class="mono">efecto</span>: que se vea como espejo</h3><p class="mono">return cv2.flip(foto, 1)</p></div></div>
+          <div class="step"><div class="num">2</div><div class="body"><h3>Prueba los otros efectos</h3><p>grises, "térmica", borroso... están en los comentarios.</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 14. LECCIÓN 5: POR QUÉ HSV -->
+  <section class="slide" data-stages="1">
+    <div class="eyebrow-row"><span class="tag">LECCIÓN 5 &middot; <b>Buscar un color</b></span><span class="level-pill">HSV</span></div>
+    <h2>El problema: <span class="accent-orange">la luz</span></h2>
+    <p style="margin-top:12px;">La MISMA manzana, con luz y con sombra. ¿Cuál número se queda casi igual?</p>
+    <div class="grid-2" style="margin-top:3vh;align-items:stretch;flex:none;">
+      <div class="card" style="display:flex;gap:18px;align-items:center;">
+        <div style="width:110px;height:110px;border-radius:50%;background:rgb(230,60,60);flex-shrink:0;"></div>
+        <div><h3>Con luz</h3><p class="mono" style="color:var(--text)">BGR = [60, 60, 230]</p><p class="mono accent-green" data-show-at="1">HSV = (0, 188, 230)</p></div>
+      </div>
+      <div class="card" style="display:flex;gap:18px;align-items:center;">
+        <div style="width:110px;height:110px;border-radius:50%;background:rgb(110,29,29);flex-shrink:0;"></div>
+        <div><h3>Con sombra</h3><p class="mono" style="color:var(--text)">BGR = [29, 29, 110]</p><p class="mono accent-green" data-show-at="1">HSV = (0, 188, 110)</p></div>
+      </div>
+    </div>
+    <p data-show-at="1" style="margin-top:3vh;font-size:clamp(18px,1.8vw,24px);">En <b>HSV</b>, el <b class="accent-green">H (el color)</b> ¡no cambió! Solo cambió la <b>V</b> (qué tan claro).</p>
+  </section>
+
+  <!-- 15. LECCIÓN 5: HSV EXPLICADO -->
+  <section class="slide">
+    <div class="eyebrow-row"><span class="tag">LECCIÓN 5 &middot; Buscar un color</span><span class="level-pill">H · S · V</span></div>
+    <div class="grid-2">
+      <div>
+        <h2>HSV = 3 números más fáciles</h2>
+        <div class="step-list" style="margin-top:2.6vh;">
+          <div class="step"><div class="num">H</div><div class="body"><h3>Tono: ¿qué color es?</h3><p>De 0 a 179. Rojo ≈ 0 · amarillo ≈ 30 · verde ≈ 60 · azul ≈ 110</p></div></div>
+          <div class="step"><div class="num blue">S</div><div class="body"><h3>Saturación: ¿qué tan intenso?</h3><p>0 = grisáceo, 255 = color puro</p></div></div>
+          <div class="step"><div class="num orange">V</div><div class="body"><h3>Valor: ¿qué tan claro?</h3><p>0 = negro, 255 = muy brillante</p></div></div>
+        </div>
+      </div>
+      <div>
+        <div class="swatch" id="hsvSwatch"></div>
+        <div class="controles">
+          <div class="ctrl"><span>H</span><input type="range" min="0" max="179" value="0" id="hsvH" aria-label="H"><output id="hsvHv">0</output></div>
+          <div class="ctrl"><span>S</span><input type="range" min="0" max="255" value="220" id="hsvS" aria-label="S"><output id="hsvSv">220</output></div>
+          <div class="ctrl"><span>V</span><input type="range" min="0" max="255" value="230" id="hsvV" aria-label="V"><output id="hsvVv">230</output></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 16. LECCIÓN 5: MÁSCARA -->
+  <section class="slide">
+    <div class="eyebrow-row"><span class="tag">LECCIÓN 5 &middot; Buscar un color</span><span class="level-pill">MÁSCARA</span></div>
+    <div class="grid-2">
+      <div>
+        <h2>La <span class="accent-green">máscara</span></h2>
+        <p style="margin-top:10px;"><b>Blanco</b> = sí es mi color. <b style="color:#888">Negro</b> = no es.</p>
+        <div class="window" style="margin-top:2vh;">
+          <div class="window-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="fname">lecciones/05_hsv_mascaras.py</span></div>
+          <div class="window-body"><pre class="py">BAJO = (0, 120, 70)
+ALTO = (8, 255, 255)
+hsv = cv2.cvtColor(imagen, cv2.COLOR_BGR2HSV)
+mascara = cv2.inRange(hsv, BAJO, ALTO)</pre></div>
+        </div>
+        <div class="controles">
+          <div class="ctrl"><span>H min</span><input type="range" min="0" max="179" value="0" id="mkHmin" aria-label="H mínimo"><output id="mkHminV">0</output></div>
+          <div class="ctrl"><span>H max</span><input type="range" min="0" max="179" value="8" id="mkHmax" aria-label="H máximo"><output id="mkHmaxV">8</output></div>
+          <div class="ctrl"><span>S min</span><input type="range" min="0" max="255" value="120" id="mkSmin" aria-label="S mínimo"><output id="mkSminV">120</output></div>
+          <div class="ctrl"><span>V min</span><input type="range" min="0" max="255" value="70" id="mkVmin" aria-label="V mínimo"><output id="mkVminV">70</output></div>
+        </div>
+        <div class="presets" id="mkPresets">
+          <button data-r="0,8,120,70">rojo</button><button data-r="10,20,120,70">naranja</button><button data-r="22,35,120,70">amarillo</button>
+          <button data-r="40,85,70,50">verde</button><button data-r="100,130,120,50">azul</button>
+        </div>
+      </div>
+      <div class="stack">
+        <canvas class="demo mitad" id="mkOriginal" width="400" height="270"></canvas>
+        <canvas class="demo mitad" id="mkMascara" width="400" height="270"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- 17. MISIÓN 5 -->
+  <section class="slide">
+    <div class="eyebrow-row"><span class="tag">LECCIÓN 5 &middot; A programar</span><span class="level-pill">MINI-RETO 5</span></div>
+    <div class="grid-2">
+      <div class="window">
+        <div class="window-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="fname">lecciones/05_hsv_mascaras.py</span></div>
+        <div class="window-body"><pre class="py"># ✏️ COMPLETA ESTA FUNCIÓN (1 línea)
+def buscar_color(imagen, bajo, alto):
+    hsv = cv2.cvtColor(imagen, cv2.COLOR_BGR2HSV)
+    # Pista: return cv2.inRange(hsv, bajo, alto)
+    return hsv</pre></div>
+      </div>
+      <div class="mission-box">
+        <div class="step-list">
+          <div class="step"><div class="num">1</div><div class="body"><h3>Completa <span class="mono">buscar_color</span></h3><p>Primero con la foto de las frutas.</p></div></div>
+          <div class="step"><div class="num">2</div><div class="body"><h3>Busca otros colores</h3><p>Cambia BAJO y ALTO (los rangos están en los comentarios).</p></div></div>
+          <div class="step"><div class="num">3</div><div class="body"><h3>Calibra TU objeto</h3><p>Corre <span class="mono">herramientas/calibrador_hsv.py</span>, dale Enter para usar la cámara y mueve las barras hasta que SOLO tu objeto salga blanco.</p></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 18. LECCIÓN 6: CONTORNOS -->
+  <section class="slide">
+    <div class="eyebrow-row"><span class="tag">LECCIÓN 6 &middot; <b>Contornos</b></span><span class="level-pill">CONTAR OBJETOS</span></div>
+    <div class="grid-2">
+      <div>
+        <h2>De manchas a <span class="accent-green">objetos</span></h2>
+        <div class="step-list" style="margin-top:2.4vh;">
+          <div class="step"><div class="num">1</div><div class="body"><h3>Contornos = las orillas de cada mancha blanca</h3><p class="mono">cv2.findContours(mascara, ...)</p></div></div>
+          <div class="step"><div class="num">2</div><div class="body"><h3>Área = qué tan grande es</h3><p>Las manchas chiquitas son <b>ruido</b>: las ignoramos con AREA_MINIMA.</p></div></div>
+          <div class="step"><div class="num">3</div><div class="body"><h3>Rectángulo y centro</h3><p>El centro está a la mitad del ancho y a la mitad del alto.</p></div></div>
+        </div>
+      </div>
+      <svg viewBox="0 0 400 300" width="100%" aria-hidden="true">
+        <rect width="400" height="300" rx="12" fill="#000" stroke="#2b3341"/>
+        <circle cx="110" cy="110" r="62" fill="#fff"/>
+        <circle cx="290" cy="195" r="44" fill="#fff"/>
+        <circle cx="250" cy="70" r="26" fill="#fff"/>
+        <circle cx="180" cy="230" r="3" fill="#fff"/><circle cx="330" cy="100" r="3" fill="#fff"/><circle cx="60" cy="250" r="3" fill="#fff"/>
+        <rect x="48" y="48" width="124" height="124" fill="none" stroke="#39ff14" stroke-width="3"/>
+        <circle cx="110" cy="110" r="6" fill="#f78166"/>
+        <text x="48" y="40" fill="#39ff14" font-family="JetBrains Mono" font-size="13">área grande ✓</text>
+        <circle cx="180" cy="230" r="12" fill="none" stroke="#f78166" stroke-width="2" stroke-dasharray="4 3"/>
+        <text x="196" y="252" fill="#f78166" font-family="JetBrains Mono" font-size="13">ruido ✗</text>
+        <line x1="48" y1="185" x2="172" y2="185" stroke="#58a6ff" stroke-width="2"/><text x="85" y="200" fill="#58a6ff" font-family="JetBrains Mono" font-size="12">ancho</text>
+      </svg>
+    </div>
+  </section>
+
+  <!-- 19. MISIÓN 6 -->
+  <section class="slide">
+    <div class="eyebrow-row"><span class="tag">LECCIÓN 6 &middot; A programar</span><span class="level-pill">MINI-RETO 6</span></div>
+    <div class="grid-2">
+      <div class="window">
+        <div class="window-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="fname">lecciones/06_contornos.py</span></div>
+        <div class="window-body"><pre class="py"># ✏️ COMPLETA ESTA FUNCIÓN (2 líneas)
+def centro(x, y, ancho, alto):
+    # Pista:
+    #   cx = x + ancho // 2
+    #   cy = ...   &lt;- ¡igual, con y y alto!
+    #   return cx, cy
+    return x, y</pre></div>
+      </div>
+      <div class="mission-box">
+        <div class="step-list">
+          <div class="step"><div class="num">1</div><div class="body"><h3>Completa <span class="mono">centro</span></h3><p>Sin completarla, el punto negro sale en la esquina. ¿Lo ves?</p></div></div>
+          <div class="step"><div class="num">2</div><div class="body"><h3>¿Por qué salen 8 objetos rojos si hay 3 manzanas?</h3></div></div>
+          <div class="step"><div class="num">3</div><div class="body"><h3>Cambia AREA_MINIMA hasta que salgan solo 3</h3></div></div>
+          <div class="step"><div class="num">★</div><div class="body"><h3>¿Cuántas moras azules hay?</h3></div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 20. LECCIÓN 7: DIBUJAR -->
+  <section class="slide">
+    <div class="eyebrow-row"><span class="tag">LECCIÓN 7 &middot; <b>Dibujar</b></span><span class="level-pill">CÍRCULOS Y TEXTO</span></div>
+    <div class="grid-2">
+      <div>
+        <h2>Dibujar sobre la imagen</h2>
+        <div class="window" style="margin-top:2.4vh;">
+          <div class="window-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="fname">lecciones/07_dibujar.py</span></div>
+          <div class="window-body"><pre class="py">cv2.line(lienzo, (50, 50), (550, 50), (255, 255, 255), 3)
+cv2.rectangle(lienzo, (50, 100), (250, 250), (0, 255, 0), 3)
+cv2.circle(lienzo, (400, 175), 75, (0, 0, 255), -1)
+cv2.putText(lienzo, "Hola SMALC", (50, 340),
+            cv2.FONT_HERSHEY_SIMPLEX, 1.5, (255, 255, 0), 3)</pre></div>
+        </div>
+        <p style="margin-top:2vh;">⚠️ Para <b>dibujar</b> se usa <span class="mono accent-green">(x, y)</span> = (columna, fila). ¡Al revés que <span class="mono">imagen[fila, columna]</span>!</p>
+        <p class="dim" style="margin-top:8px;">Y los colores siguen siendo BGR: <span class="mono">(0, 0, 255)</span> es rojo.</p>
+      </div>
+      <svg viewBox="0 0 600 400" width="100%" aria-hidden="true">
+        <rect width="600" height="400" rx="12" fill="#000" stroke="#2b3341"/>
+        <line x1="50" y1="50" x2="550" y2="50" stroke="#fff" stroke-width="3"/>
+        <rect x="50" y="100" width="200" height="150" fill="none" stroke="#00ff00" stroke-width="3"/>
+        <circle cx="400" cy="175" r="75" fill="#ff0000"/>
+        <text x="50" y="340" fill="#00ffff" font-family="Space Grotesk" font-weight="700" font-size="52">Hola SMALC</text>
+        <text x="58" y="72" fill="#8b949e" font-family="JetBrains Mono" font-size="15">(50, 50)</text>
+        <text x="352" y="180" fill="#fff" font-family="JetBrains Mono" font-size="15">(400, 175)</text>
+      </svg>
+    </div>
+  </section>
+
+  <!-- 21. MISIÓN 7 -->
+  <section class="slide">
+    <div class="eyebrow-row"><span class="tag">LECCIÓN 7 &middot; Mini-reto final</span><span class="level-pill orange">¡LA MIRA TE SIGUE!</span></div>
+    <div class="grid-2" style="grid-template-columns:1.35fr .65fr;gap:3vw;">
+      <div class="window">
+        <div class="window-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="fname">lecciones/07_dibujar.py</span></div>
+        <div class="window-body"><pre class="py"># ✏️ COMPLETA ESTA FUNCIÓN (3 líneas)
+def dibujar_mira(foto, x, y, radio):
+    # Pista:
+    #   cv2.circle(foto, (x, y), radio, (0, 255, 0), 3)
+    #   cv2.circle(foto, (x, y), 5, (0, 0, 255), -1)
+    #   cv2.putText(foto, "OBJETIVO", (x, y), ...)
+    pass</pre></div>
+        <p class="dim" style="padding:0 20px 16px;">Pon en BAJO y ALTO el rango de tu objeto (el del calibrador).</p>
+      </div>
+      <div class="viewfinder" style="max-width:420px;">
+        <div class="corner tl"></div><div class="corner tr"></div><div class="corner bl"></div><div class="corner br"></div>
+        <svg viewBox="0 0 400 300" width="100%" aria-hidden="true">
+          <rect width="400" height="300" rx="10" fill="#1b222c"/>
+          <g class="sigue">
+            <circle cx="170" cy="160" r="34" fill="#e5484d"/>
+            <circle cx="170" cy="160" r="44" fill="none" stroke="#39ff14" stroke-width="4"/>
+            <circle cx="170" cy="160" r="5" fill="#ff3030"/>
+            <text x="170" y="105" fill="#39ff14" font-family="JetBrains Mono" font-weight="700" font-size="16" text-anchor="middle">OBJETIVO</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- 22. RECESO -->
+  <section class="slide hero-slide">
+    <div class="kicker-big">NIVEL COMPLETADO: 7 / 7 LECCIONES</div>
+    <h1 style="font-size:clamp(40px,6vw,80px);">Receso ☕</h1>
+    <p class="sub">15 minutos. Al regresar... <b class="accent-orange">empieza el rally.</b></p>
+    <div class="badge-row" style="justify-content:center;margin-top:4vh;">
+      <span class="badge"><span class="check">✓</span><span>pixeles</span></span>
+      <span class="badge"><span class="check">✓</span><span>BGR</span></span>
+      <span class="badge"><span class="check">✓</span><span>threshold</span></span>
+      <span class="badge"><span class="check">✓</span><span>video</span></span>
+      <span class="badge"><span class="check">✓</span><span>HSV</span></span>
+      <span class="badge"><span class="check">✓</span><span>contornos</span></span>
+      <span class="badge"><span class="check">✓</span><span>dibujar</span></span>
+    </div>
+  </section>
+
+  <!-- 23. RALLY PORTADA -->
+  <section class="slide hero-slide">
+    <div class="kicker-big" style="color:var(--orange)">MODO COMPETENCIA ACTIVADO</div>
+    <h1 style="font-size:clamp(48px,8vw,110px);">RALLY<br><span class="accent-orange">DE VISIÓN</span></h1>
+    <p class="sub">6 retos · cada uno esconde una <b>clave</b> · solo la descubres con OpenCV</p>
+  </section>
+
+  <!-- 24. REGLAS -->
+  <section class="slide">
+    <div class="eyebrow-row"><span class="tag">RALLY</span><span class="level-pill orange">REGLAS Y PUNTOS</span></div>
+    <div class="grid-2" style="align-items:start;">
+      <div class="step-list">
+        <div class="step"><div class="num orange">1</div><div class="body"><h3>Por equipos</h3><p>Todos los retos están en la carpeta <span class="mono">rally/</span>. Hazlos en el orden que quieras.</p></div></div>
+        <div class="step"><div class="num orange">2</div><div class="body"><h3>Completa la función → aparece la CLAVE</h3><p>Dísela al staff. Si es correcta, ¡puntos!</p></div></div>
+        <div class="step"><div class="num orange">3</div><div class="body"><h3>El staff puede pedir ver tu código corriendo</h3><p>Adivinar no cuenta.</p></div></div>
+        <div class="step"><div class="num orange">4</div><div class="body"><h3>Bonus y castigos</h3><p><b class="accent-gold">+50</b> al primer equipo en resolver cada reto · <b class="accent-orange">−10</b> por clave equivocada</p></div></div>
+      </div>
+      <table class="t">
+        <thead><tr><th>Reto</th><th>Lección</th><th style="text-align:right">Puntos</th></tr></thead>
+        <tbody>
+          <tr><td>1 · Detective de pixeles</td><td class="dim">1, 2</td><td class="pts">100</td></tr>
+          <tr><td>2 · Mensaje en la oscuridad</td><td class="dim">3</td><td class="pts">100</td></tr>
+          <tr><td>3 · El canal secreto</td><td class="dim">2</td><td class="pts">200</td></tr>
+          <tr><td>4 · Caza de colores</td><td class="dim">5, 6</td><td class="pts">200</td></tr>
+          <tr><td>5 · Encuentra el tesoro</td><td class="dim">6</td><td class="pts">300</td></tr>
+          <tr><td>6 · Jefe final (en vivo)</td><td class="dim">todas</td><td class="pts">500</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 25. RETO 1 -->
+  <section class="slide">
+    <div class="eyebrow-row"><span class="tag">RALLY &middot; <b>RETO 1</b> &middot; ⭐</span><span class="level-pill orange">100 PUNTOS</span></div>
+    <div class="grid-2">
+      <div>
+        <h2>Detective de pixeles</h2>
+        <p style="margin-top:12px;">Un espía escondió una palabra en un confeti de colores. En la <b>fila 237</b>, el canal <b class="accent-red">ROJO</b> de algunos pixeles es una letra:</p>
+        <p class="mono accent-green" style="margin-top:12px;font-size:clamp(16px,1.6vw,22px);">1 = A · 2 = B · 3 = C ... 26 = Z</p>
+        <p style="margin-top:16px;">Completa <span class="mono">leer_rojo</span>: regresa solo el número del canal rojo.</p>
+        <p class="dim" style="margin-top:12px;">Pista: si te sale <span class="mono">AZULAZULAZUL...</span>, leíste otro canal 😉</p>
+        <div style="margin-top:2vh;"><span class="chip-file">rally/reto_1_detective_pixeles.py</span></div>
+      </div>
+      <canvas class="demo" id="confeti" width="400" height="300"></canvas>
+    </div>
+  </section>
+
+  <!-- 26. RETO 2 -->
+  <section class="slide">
+    <div class="eyebrow-row"><span class="tag">RALLY &middot; <b>RETO 2</b> &middot; ⭐</span><span class="level-pill orange">100 PUNTOS</span></div>
+    <div class="grid-2">
+      <div>
+        <h2>Mensaje en la oscuridad</h2>
+        <p style="margin-top:12px;">Una foto casi negra... con mensajes escritos en tinta <b>un poquito menos negra</b>.</p>
+        <div class="step-list" style="margin-top:2.4vh;">
+          <div class="step"><div class="num orange">1</div><div class="body"><h3>Completa <span class="mono">blanco_y_negro</span></h3><p>Igual que en la Lección 3.</p></div></div>
+          <div class="step"><div class="num orange">2</div><div class="body"><h3>Cambia el UMBRAL y vuelve a correr</h3><p>¡Hay más de un mensaje! Solo uno dice CLAVE.</p></div></div>
+        </div>
+        <div style="margin-top:2vh;"><span class="chip-file">rally/reto_2_mensaje_oscuridad.py</span></div>
+      </div>
+      <div style="background:#0c0c0c;border:1px solid var(--border);border-radius:12px;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;">
+        <span style="font-family:'Space Grotesk';font-weight:700;font-size:clamp(20px,2.6vw,38px);color:#161616;letter-spacing:.05em;">CLAVE: ??????</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 27. RETO 3 -->
+  <section class="slide">
+    <div class="eyebrow-row"><span class="tag">RALLY &middot; <b>RETO 3</b> &middot; ⭐⭐</span><span class="level-pill orange">200 PUNTOS</span></div>
+    <div class="grid-2">
+      <div>
+        <h2>El canal secreto</h2>
+        <p style="margin-top:12px;">Tres palabras encimadas, cada una en un canal. Juntas no se lee nada. <b>La clave está en el canal ROJO.</b></p>
+        <p style="margin-top:16px;">Completa <span class="mono">canal_rojo</span>: de los 3 canales que da <span class="mono">cv2.split</span>, ¿cuál es el rojo?</p>
+        <p class="dim" style="margin-top:12px;">Pista: si lees <span class="mono">AQUI NO</span> o <span class="mono">TAMPOCO</span>... acuérdate del orden BGR.</p>
+        <div style="margin-top:2vh;"><span class="chip-file">rally/reto_3_canal_secreto.py</span></div>
+      </div>
+      <div style="background:#111;border:1px solid var(--border);border-radius:12px;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden;">
+        <span style="position:absolute;font-family:'Space Grotesk';font-weight:700;font-size:clamp(30px,4vw,60px);color:rgba(80,80,255,.75);transform:translate(-6px,4px);">AQUI NO</span>
+        <span style="position:absolute;font-family:'Space Grotesk';font-weight:700;font-size:clamp(30px,4vw,60px);color:rgba(60,255,60,.65);transform:translate(8px,-3px);">TAMPOCO</span>
+        <span style="position:absolute;font-family:'Space Grotesk';font-weight:700;font-size:clamp(30px,4vw,60px);color:rgba(255,60,60,.65);">??????</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 28. RETO 4 -->
+  <section class="slide">
+    <div class="eyebrow-row"><span class="tag">RALLY &middot; <b>RETO 4</b> &middot; ⭐⭐</span><span class="level-pill orange">200 PUNTOS</span></div>
+    <div class="grid-2">
+      <div>
+        <h2>Caza de colores</h2>
+        <p style="margin-top:12px;">¿Cuántas pelotas son <b class="accent-red">ROJAS</b>? Cuidado: las naranjas, las rosas y las guindas (rojo oscuro) <b>no cuentan</b>.</p>
+        <div class="step-list" style="margin-top:2.4vh;">
+          <div class="step"><div class="num orange">1</div><div class="body"><h3>Calibra el rojo con el calibrador</h3><p>Cuando te pregunte la imagen, escribe <span class="mono">reto_4</span>.</p></div></div>
+          <div class="step"><div class="num orange">2</div><div class="body"><h3>Completa <span class="mono">contar</span></h3><p class="mono">len(lista) = cuántos elementos tiene</p></div></div>
+        </div>
+        <div style="margin-top:2vh;"><span class="chip-file">rally/reto_4_caza_colores.py</span></div>
+      </div>
+      <canvas class="demo" id="pelotas" width="400" height="270"></canvas>
+    </div>
+  </section>
+
+  <!-- 29. RETO 5 -->
+  <section class="slide">
+    <div class="eyebrow-row"><span class="tag">RALLY &middot; <b>RETO 5</b> &middot; ⭐⭐⭐</span><span class="level-pill orange">300 PUNTOS</span></div>
+    <div class="grid-2">
+      <div>
+        <h2>Encuentra el tesoro</h2>
+        <p style="margin-top:12px;">Un mapa con 9 gemas verdes que se ven <b>iguales</b>. Solo una es la esmeralda (ya te damos su color). Pero un pirata regó <b>polvo de esmeralda</b> por todo el mapa...</p>
+        <p style="margin-top:16px;">Completa <span class="mono">es_grande</span> para ignorar el polvo. Cuando quede <b>un solo círculo</b>, la clave es su casilla (ej. <span class="mono">B3</span>).</p>
+        <div style="margin-top:2vh;"><span class="chip-file">rally/reto_5_encuentra_tesoro.py</span></div>
+      </div>
+      <svg viewBox="0 0 400 290" width="100%" aria-hidden="true">
+        <rect width="400" height="290" rx="10" fill="#dec49a"/>
+        <g stroke="#5f3c28" stroke-width="1.5" id="mapaRejilla"></g>
+        <g font-family="JetBrains Mono" font-size="12" fill="#5f3c28" id="mapaEtiquetas"></g>
+        <g id="mapaGemas"></g>
+      </svg>
+    </div>
+  </section>
+
+  <!-- 30. RETO 6 -->
+  <section class="slide">
+    <div class="eyebrow-row"><span class="tag">RALLY &middot; <b>RETO 6</b> &middot; ⭐⭐⭐⭐</span><span class="level-pill gold">500 PUNTOS · JEFE FINAL</span></div>
+    <div class="grid-2">
+      <div>
+        <h2>Jefe final: <span class="accent-gold">¡no lo pierdas!</span></h2>
+        <p style="margin-top:12px;">El staff mueve un objeto frente a tu cámara durante <b>10 segundos</b>:</p>
+        <div class="step-list" style="margin-top:2vh;">
+          <div class="step"><div class="num gold">1</div><div class="body"><h3>La mira nunca debe perderlo</h3><p>Calibra bien su color... ¡y cuidado con la luz!</p></div></div>
+          <div class="step"><div class="num gold">2</div><div class="body"><h3>La pantalla dice dónde está</h3><p>Completa <span class="mono">donde_esta(x)</span>: IZQUIERDA, CENTRO o DERECHA.</p></div></div>
+        </div>
+        <p class="dim" style="margin-top:2vh;">Esto es justo lo que un dron necesita para saber hacia dónde girar.</p>
+        <div style="margin-top:1.6vh;"><span class="chip-file">rally/reto_6_jefe_final.py</span></div>
+      </div>
+      <svg viewBox="0 0 640 400" width="100%" aria-hidden="true">
+        <rect width="640" height="400" rx="12" fill="#1b222c"/>
+        <rect x="0" y="0" width="213" height="400" fill="rgba(88,166,255,.08)"/>
+        <rect x="426" y="0" width="214" height="400" fill="rgba(247,129,102,.08)"/>
+        <line x1="213" y1="0" x2="213" y2="400" stroke="#2b3341" stroke-width="3" stroke-dasharray="10 8"/>
+        <line x1="426" y1="0" x2="426" y2="400" stroke="#2b3341" stroke-width="3" stroke-dasharray="10 8"/>
+        <text x="106" y="385" text-anchor="middle" fill="#58a6ff" font-family="JetBrains Mono" font-size="22">IZQUIERDA</text>
+        <text x="320" y="385" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="22">CENTRO</text>
+        <text x="533" y="385" text-anchor="middle" fill="#f78166" font-family="JetBrains Mono" font-size="22">DERECHA</text>
+        <text x="106" y="30" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="16">x &lt; 213</text>
+        <text x="533" y="30" text-anchor="middle" fill="#8b949e" font-family="JetBrains Mono" font-size="16">x ≥ 426</text>
+        <g class="sigue">
+          <circle cx="320" cy="200" r="40" fill="#e5484d"/>
+          <circle cx="320" cy="200" r="52" fill="none" stroke="#39ff14" stroke-width="5"/>
+          <circle cx="320" cy="200" r="6" fill="#ff3030"/>
+        </g>
+      </svg>
+    </div>
+  </section>
+
+  <!-- 31. MARCADOR -->
+  <section class="slide hero-slide">
+    <div class="kicker-big" style="color:var(--orange)">85 MINUTOS · ¡QUE EMPIECE EL RALLY!</div>
+    <h1 style="font-size:clamp(40px,6vw,82px);">Marcador en vivo</h1>
+    <p class="sub">El staff lo va actualizando en el proyector.</p>
+    <div style="margin-top:4vh;"><a class="chip-file" href="../marcador.html" target="_blank" rel="noopener" style="text-decoration:none;font-size:clamp(16px,1.6vw,22px);padding:12px 20px;">abrir marcador.html ↗</a></div>
+  </section>
+
+  <!-- 32. CIERRE -->
+  <section class="slide hero-slide">
+    <div class="kicker-big">SESIÓN COMPLETADA</div>
+    <h1 style="font-size:clamp(34px,5vw,64px);">Hoy la computadora<br>aprendió a <span class="accent-green">ver</span>.</h1>
+    <div class="ciclo" style="margin-top:4vh;">
+      <div class="paso activo"><h3 class="accent-green">Percibir ✓</h3><p>¡hoy!</p></div><span class="flecha">→</span>
+      <div class="paso"><h3>Decidir</h3><p>IZQUIERDA / DERECHA</p></div><span class="flecha">→</span>
+      <div class="paso"><h3>Actuar</h3><p>el dron gira</p></div>
+    </div>
+    <p class="sub" style="margin-top:4vh;">Próxima misión: <b>que su detector vuele en el dron</b> 🚁</p>
+    <div class="window" style="margin:3vh auto 0;max-width:520px;text-align:left;">
+      <div class="window-bar"><div class="dot r"></div><div class="dot y"></div><div class="dot g"></div><span class="fname">guarda tu trabajo</span></div>
+      <div class="window-body"><pre class="py">git add .
+git commit -m "rally de vision"</pre></div>
+    </div>
+  </section>
+
+</div>
+
+<div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+<div class="chrome-bottom">
+  <span id="counter">1 / 1</span>
+  <span class="navbtns">
+    <button class="navbtn" id="prevBtn" title="Anterior (←)">&#8592;</button>
+    <button class="navbtn" id="nextBtn" title="Siguiente (→)">&#8594;</button>
+  </span>
+</div>
+
+<script>
+/* =========================================================================
+   Navegación (misma mecánica que la Sesión 2: flechas, etapas con data-show-at)
+   ========================================================================= */
+const slides = Array.from(document.querySelectorAll('.slide'));
+let idx = 0, stage = 0;
+const maxStage = s => parseInt(s.dataset.stages || '0', 10);
+
+function applyStage(slide, st){
+  slide.querySelectorAll('[data-show-at]').forEach(el => {
+    el.classList.toggle('revealed', st >= parseInt(el.dataset.showAt, 10));
+  });
+  if (slide.id === 'slideMatriz') revelarMatriz(st >= 1);
+}
+function updateChrome(){
+  history.replaceState(null, '', '#' + (idx + 1));
+  document.getElementById('counter').textContent = (idx + 1) + ' / ' + slides.length;
+  document.getElementById('progressFill').style.width = ((idx + 1) / slides.length * 100) + '%';
+}
+function flash(){
+  const f = document.getElementById('flashOverlay');
+  f.classList.remove('flash-active'); void f.offsetWidth; f.classList.add('flash-active');
+}
+function goToSlide(newIdx, dir){
+  const old = slides[idx], neu = slides[newIdx];
+  neu.classList.add('notrans');
+  neu.style.transform = dir > 0 ? 'translateX(46px) scale(.98)' : 'translateX(-46px) scale(.98)';
+  neu.style.opacity = '0'; neu.style.pointerEvents = 'none'; neu.style.zIndex = 2;
+  void neu.offsetWidth;
+  neu.classList.remove('notrans');
+  old.style.zIndex = 3;
+  requestAnimationFrame(() => {
+    old.style.transform = dir > 0 ? 'translateX(-46px) scale(.98)' : 'translateX(46px) scale(.98)';
+    old.style.opacity = '0'; old.style.pointerEvents = 'none';
+    neu.style.transform = 'translateX(0) scale(1)'; neu.style.opacity = '1'; neu.style.pointerEvents = 'auto'; neu.style.zIndex = 3;
+  });
+  setTimeout(() => { old.style.zIndex = 1; }, 520);
+  idx = newIdx; flash(); updateChrome();
+}
+function next(){
+  if (stage < maxStage(slides[idx])) { stage++; applyStage(slides[idx], stage); return; }
+  if (idx < slides.length - 1) { goToSlide(idx + 1, 1); stage = 0; applyStage(slides[idx], 0); }
+}
+function prev(){
+  if (stage > 0) { stage--; applyStage(slides[idx], stage); return; }
+  if (idx > 0) { goToSlide(idx - 1, -1); stage = maxStage(slides[idx]); applyStage(slides[idx], stage); }
+}
+window.addEventListener('keydown', e => {
+  // Si estás moviendo una barra, las flechas mueven la barra (no cambian de diapositiva)
+  if (e.target.matches && e.target.matches('input[type=range]') && e.key.startsWith('Arrow')) return;
+  if (['ArrowRight', 'ArrowDown', 'PageDown', ' '].includes(e.key)) { next(); e.preventDefault(); }
+  else if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) { prev(); e.preventDefault(); }
+});
+document.getElementById('nextBtn').addEventListener('click', next);
+document.getElementById('prevBtn').addEventListener('click', prev);
+// Soltar el foco de una barra al terminar, para que las flechas vuelvan a cambiar de diapositiva
+document.querySelectorAll('input[type=range]').forEach(r => r.addEventListener('change', () => r.blur()));
+
+
+/* =========================================================================
+   Resaltado sencillo de código Python
+   ========================================================================= */
+document.querySelectorAll('pre.py').forEach(pre => {
+  const texto = pre.textContent;
+  const re = /(#[^\n]*)|("[^"\n]*")|\b(def|return|import|for|in|if|elif|else|while|break|True|False|None|pass)\b|\b(cv2\.\w+|print|len|ord)\b|\b(\d+)\b/g;
+  const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  let html = '', ultimo = 0, m;
+  while ((m = re.exec(texto))) {
+    html += esc(texto.slice(ultimo, m.index));
+    const clase = m[1] ? 'c' : m[2] ? 's' : m[3] ? 'k' : m[4] ? 'f' : 'n';
+    html += `<span class="${clase}">${esc(m[0])}</span>`;
+    ultimo = re.lastIndex;
+  }
+  pre.innerHTML = html + esc(texto.slice(ultimo));
+});
+
+/* =========================================================================
+   Lección 1: la matriz misteriosa (un dron visto desde arriba)
+   ========================================================================= */
+const MISTERIO = [
+  "................",
+  ".ooo........ooo.",
+  ".o.o........o.o.",
+  ".ooo#......#ooo.",
+  "....##....##....",
+  ".....##..##.....",
+  "......BBBB......",
+  "......BccB......",
+  "......BccB......",
+  "......BBBB......",
+  ".....##..##.....",
+  "....##....##....",
+  ".ooo#......#ooo.",
+  ".o.o........o.o.",
+  ".ooo........ooo.",
+  "................",
+].map(fila => fila.split('').map(ch => ({ '.': 20, 'o': 230, '#': 150, 'B': 255, 'c': 90 })[ch]));
+const matriz = document.getElementById('matriz');
+MISTERIO.flat().forEach(v => { const d = document.createElement('div'); d.textContent = v; d.dataset.v = v; matriz.appendChild(d); });
+function revelarMatriz(si){
+  matriz.classList.toggle('revelada', si);
+  matriz.querySelectorAll('div').forEach(d => {
+    const v = d.dataset.v;
+    d.style.background = si ? `rgb(${v},${v},${v})` : '';
+  });
+  document.getElementById('preguntaMatriz').style.opacity = si ? '.35' : '1';
+}
+
+/* Rejilla fila/columna */
+(() => {
+  const rej = document.getElementById('rejilla');
+  const F = 6, C = 8, fila = 2, col = 5;
+  rej.appendChild(Object.assign(document.createElement('div'), { className: 'ind' }));
+  for (let c = 0; c < C; c++) rej.appendChild(Object.assign(document.createElement('div'), { className: 'ind', textContent: c, style: c === col ? 'color:var(--orange);font-weight:700' : '' }));
+  for (let r = 0; r < F; r++) {
+    rej.appendChild(Object.assign(document.createElement('div'), { className: 'ind', textContent: r, style: r === fila ? 'color:var(--blue);font-weight:700' : '' }));
+    for (let c = 0; c < C; c++) {
+      const d = document.createElement('div');
+      d.className = 'celda' + (r === fila && c === col ? ' elegida' : r === fila ? ' fila-hl' : c === col ? ' col-hl' : '');
+      rej.appendChild(d);
+    }
+  }
+})();
+
+/* =========================================================================
+   Escenas dibujadas en canvas (para poder leer sus pixeles en las demos)
+   ========================================================================= */
+function fruta(ctx, x, y, r, rgb){
+  const [R, G, B] = rgb;
+  const g = ctx.createRadialGradient(x - r * .35, y - r * .35, r * .1, x, y, r);
+  g.addColorStop(0, `rgb(${R},${G},${B})`);
+  g.addColorStop(1, `rgb(${R * .66 | 0},${G * .66 | 0},${B * .66 | 0})`);
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = 'rgba(250,250,250,.95)'; ctx.beginPath(); ctx.arc(x - r * .38, y - r * .38, Math.max(2, r / 6), 0, Math.PI * 2); ctx.fill();
+}
+function escenaFrutas(cv){
+  const ctx = cv.getContext('2d'), k = cv.width / 800;
+  ctx.fillStyle = 'rgb(236,222,200)'; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.save(); ctx.scale(k, k);
+  const rojo = [210, 40, 40], verde = [70, 180, 55], naranja = [250, 140, 20], azul = [40, 70, 170];
+  fruta(ctx, 170, 170, 85, rojo); fruta(ctx, 610, 400, 60, rojo); fruta(ctx, 420, 110, 38, rojo);
+  fruta(ctx, 330, 330, 50, verde); fruta(ctx, 700, 150, 42, verde);
+  fruta(ctx, 160, 420, 70, naranja);
+  ctx.strokeStyle = 'rgb(240,210,40)'; ctx.lineWidth = 36; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.ellipse(470, 300, 130, 95, 0, Math.PI * 20 / 180, Math.PI * 140 / 180); ctx.stroke();
+  [[330, 470], [365, 490], [395, 460], [430, 500], [520, 470], [555, 505], [300, 505], [470, 460]].forEach(([x, y]) => fruta(ctx, x, y, 14, azul));
+  ctx.fillStyle = 'rgb(210,40,40)';
+  [[290, 90], [560, 250], [720, 300], [260, 250], [520, 60]].forEach(([x, y]) => { ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fill(); });
+  ctx.restore();
+}
+function escenaManzana(cv){
+  const ctx = cv.getContext('2d'), k = cv.width / 640;
+  const fondo = ctx.createLinearGradient(0, 0, 0, cv.height);
+  fondo.addColorStop(0, 'rgb(242,242,242)'); fondo.addColorStop(1, 'rgb(226,226,226)');
+  ctx.fillStyle = fondo; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.save(); ctx.scale(k, k);
+  ctx.filter = 'blur(14px)'; ctx.fillStyle = 'rgba(0,0,0,.25)';
+  ctx.beginPath(); ctx.ellipse(335, 395, 150, 28, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.filter = 'none';
+  for (const x of [280, 365]) {
+    const g = ctx.createRadialGradient(x - 42, 223, 12, x, 265, 120);
+    g.addColorStop(0, 'rgb(205,40,45)'); g.addColorStop(1, 'rgb(135,26,30)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, 265, 120, 0, Math.PI * 2); ctx.fill();
+  }
+  ctx.fillStyle = 'rgb(245,215,215)'; ctx.beginPath(); ctx.arc(270, 215, 22, 0, Math.PI * 2); ctx.fill();
+  ctx.strokeStyle = 'rgb(90,55,30)'; ctx.lineWidth = 10; ctx.beginPath(); ctx.moveTo(322, 160); ctx.lineTo(338, 110); ctx.stroke();
+  ctx.fillStyle = 'rgb(60,150,50)'; ctx.beginPath(); ctx.ellipse(380, 125, 46, 20, -25 * Math.PI / 180, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+
+/* Lección 2: canales */
+(() => {
+  const o = document.getElementById('canOriginal'); escenaFrutas(o);
+  const datos = o.getContext('2d').getImageData(0, 0, o.width, o.height).data;
+  [['canAzul', 2], ['canVerde', 1], ['canRojo', 0]].forEach(([id, ch]) => {
+    const cv = document.getElementById(id), ctx = cv.getContext('2d');
+    const img = ctx.createImageData(cv.width, cv.height);
+    for (let i = 0; i < datos.length; i += 4) { const v = datos[i + ch]; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
+    ctx.putImageData(img, 0, 0);
+  });
+})();
+
+/* Lección 2: mezclador BGR */
+(() => {
+  const b = document.getElementById('mixB'), g = document.getElementById('mixG'), r = document.getElementById('mixR');
+  function pintar(){
+    document.getElementById('mixBv').textContent = b.value;
+    document.getElementById('mixGv').textContent = g.value;
+    document.getElementById('mixRv').textContent = r.value;
+    document.getElementById('mixSwatch').style.background = `rgb(${r.value},${g.value},${b.value})`;
+    document.getElementById('mixTexto').innerHTML = `[<span class="accent-blue">${b.value}</span>, <span class="accent-green">${g.value}</span>, <span class="accent-red">${r.value}</span>]`;
+  }
+  [b, g, r].forEach(x => x.addEventListener('input', pintar));
+  document.querySelectorAll('#mixPresets button').forEach(btn => btn.addEventListener('click', () => {
+    [b.value, g.value, r.value] = btn.dataset.c.split(','); pintar();
+  }));
+  pintar();
+})();
+
+/* Lección 3: threshold */
+(() => {
+  const o = document.getElementById('thOriginal'); escenaManzana(o);
+  const src = o.getContext('2d').getImageData(0, 0, o.width, o.height).data;
+  const dst = document.getElementById('thResultado'), ctx = dst.getContext('2d');
+  const img = ctx.createImageData(dst.width, dst.height);
+  const u = document.getElementById('umbral');
+  function pintar(){
+    const t = +u.value; document.getElementById('umbralV').textContent = t;
+    for (let i = 0; i < src.length; i += 4) {
+      const gris = 0.299 * src[i] + 0.587 * src[i + 1] + 0.114 * src[i + 2];
+      const v = gris > t ? 255 : 0;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+  u.addEventListener('input', pintar); pintar();
+})();
+
+/* Conversión a HSV con la escala de OpenCV (H 0-179, S y V 0-255) */
+function rgbAHsv(r, g, b){
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), d = max - min;
+  let h = 0;
+  if (d) {
+    if (max === r) h = 60 * (((g - b) / d) % 6);
+    else if (max === g) h = 60 * ((b - r) / d + 2);
+    else h = 60 * ((r - g) / d + 4);
+  }
+  if (h < 0) h += 360;
+  return [Math.round(h / 2) % 180, max ? Math.round(255 * d / max) : 0, max];
+}
+function hsvARgb(h, s, v){
+  h = h * 2; s /= 255; v /= 255;
+  const c = v * s, x = c * (1 - Math.abs((h / 60) % 2 - 1)), m = v - c;
+  const [r, g, b] = h < 60 ? [c, x, 0] : h < 120 ? [x, c, 0] : h < 180 ? [0, c, x] : h < 240 ? [0, x, c] : h < 300 ? [x, 0, c] : [c, 0, x];
+  return [(r + m) * 255 | 0, (g + m) * 255 | 0, (b + m) * 255 | 0];
+}
+
+/* Lección 5: selector HSV */
+(() => {
+  const H = document.getElementById('hsvH'), S = document.getElementById('hsvS'), V = document.getElementById('hsvV');
+  function pintar(){
+    document.getElementById('hsvHv').textContent = H.value;
+    document.getElementById('hsvSv').textContent = S.value;
+    document.getElementById('hsvVv').textContent = V.value;
+    const [r, g, b] = hsvARgb(+H.value, +S.value, +V.value);
+    document.getElementById('hsvSwatch').style.background = `rgb(${r},${g},${b})`;
+  }
+  [H, S, V].forEach(x => x.addEventListener('input', pintar)); pintar();
+})();
+
+/* Lección 5: máscara */
+(() => {
+  const o = document.getElementById('mkOriginal'); escenaFrutas(o);
+  const src = o.getContext('2d').getImageData(0, 0, o.width, o.height).data;
+  const hsv = new Uint8Array(src.length / 4 * 3);
+  for (let i = 0, j = 0; i < src.length; i += 4, j += 3) { const [h, s, v] = rgbAHsv(src[i], src[i + 1], src[i + 2]); hsv[j] = h; hsv[j + 1] = s; hsv[j + 2] = v; }
+  const dst = document.getElementById('mkMascara'), ctx = dst.getContext('2d'), img = ctx.createImageData(dst.width, dst.height);
+  const ids = ['mkHmin', 'mkHmax', 'mkSmin', 'mkVmin'], el = ids.map(id => document.getElementById(id));
+  function pintar(){
+    ids.forEach((id, k) => { document.getElementById(id + 'V').textContent = el[k].value; });
+    const [hmin, hmax, smin, vmin] = el.map(x => +x.value);
+    for (let i = 0, j = 0; i < img.data.length; i += 4, j += 3) {
+      const si = hsv[j] >= hmin && hsv[j] <= hmax && hsv[j + 1] >= smin && hsv[j + 2] >= vmin;
+      img.data[i] = img.data[i + 1] = img.data[i + 2] = si ? 255 : 0; img.data[i + 3] = 255;
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+  el.forEach(x => x.addEventListener('input', pintar));
+  document.querySelectorAll('#mkPresets button').forEach(btn => btn.addEventListener('click', () => {
+    btn.dataset.r.split(',').forEach((v, k) => { el[k].value = v; }); pintar();
+  }));
+  pintar();
+})();
+
+/* Rally: confeti del reto 1 */
+(() => {
+  const cv = document.getElementById('confeti'), ctx = cv.getContext('2d');
+  let semilla = 7; const azar = () => (semilla = (semilla * 16807) % 2147483647) / 2147483647;
+  for (let y = 0; y < cv.height; y += 10) for (let x = 0; x < cv.width; x += 10) {
+    ctx.fillStyle = `rgb(${azar() * 255 | 0},${azar() * 255 | 0},${azar() * 255 | 0})`; ctx.fillRect(x, y, 10, 10);
+  }
+  ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.strokeRect(1, 150, cv.width - 2, 10);
+  ctx.setLineDash([]); ctx.fillStyle = '#000'; ctx.fillRect(8, 128, 118, 20);
+  ctx.fillStyle = '#39ff14'; ctx.font = '600 13px JetBrains Mono, monospace'; ctx.fillText('fila 237 →', 14, 143);
+})();
+
+/* Rally: pelotas del reto 4 */
+(() => {
+  const cv = document.getElementById('pelotas'), ctx = cv.getContext('2d');
+  ctx.fillStyle = '#e2e2e2'; ctx.fillRect(0, 0, cv.width, cv.height);
+  const colores = ['#e63c3c', '#e63c3c', '#e63c3c', '#f28a1e', '#6e1414', '#f5a0b4', '#f0d232', '#3cb43c', '#3c64dc', '#8c46b4'];
+  let semilla = 3; const azar = () => (semilla = (semilla * 16807) % 2147483647) / 2147483647;
+  const puestas = [];
+  for (let n = 0; n < 400 && puestas.length < 40; n++) {
+    const r = 8 + azar() * 10, x = r + azar() * (cv.width - 2 * r), y = r + azar() * (cv.height - 2 * r);
+    if (puestas.some(([px, py, pr]) => Math.hypot(px - x, py - y) < pr + r + 3)) continue;
+    puestas.push([x, y, r]);
+    ctx.fillStyle = colores[puestas.length % colores.length]; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x - r / 3, y - r / 3, r / 5, 0, Math.PI * 2); ctx.fill();
+  }
+})();
+
+/* Rally: mapa del reto 5 */
+(() => {
+  const ns = 'http://www.w3.org/2000/svg', M = 30, C = 36;
+  const rej = document.getElementById('mapaRejilla'), eti = document.getElementById('mapaEtiquetas'), gem = document.getElementById('mapaGemas');
+  const el = (tag, attrs, padre) => { const e = document.createElementNS(ns, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); padre.appendChild(e); return e; };
+  for (let i = 0; i <= 10; i++) el('line', { x1: M + i * C, y1: M, x2: M + i * C, y2: M + 7 * C }, rej);
+  for (let j = 0; j <= 7; j++) el('line', { x1: M, y1: M + j * C, x2: M + 10 * C, y2: M + j * C }, rej);
+  'ABCDEFGHIJ'.split('').forEach((l, i) => { el('text', { x: M + i * C + 14, y: 22 }, eti).textContent = l; });
+  for (let j = 0; j < 7; j++) el('text', { x: 10, y: M + j * C + 23 }, eti).textContent = j + 1;
+  [[1, 0], [3, 1], [8, 1], [0, 3], [7, 3], [4, 4], [1, 5], [6, 5], [9, 6]].forEach(([c, f], k) => {
+    const x = M + c * C + C / 2, y = M + f * C + C / 2, r = 11;
+    el('polygon', { points: `${x},${y - r} ${x + r},${y} ${x},${y + r} ${x - r},${y}`, fill: ['#1fbf3f', '#22c740', '#1db83c'][k % 3] }, gem);
+  });
+  let semilla = 11; const azar = () => (semilla = (semilla * 16807) % 2147483647) / 2147483647;
+  for (let n = 0; n < 160; n++) el('circle', { cx: M + azar() * 10 * C, cy: M + azar() * 7 * C, r: .9, fill: '#1fbf3f' }, gem);
+})();
+
+/* Arranque: se hace al final, cuando todas las demos ya existen.
+   Con #12 en la dirección abre directo la diapositiva 12 (y al recargar no pierdes tu lugar). */
+const pedida = parseInt(location.hash.slice(1), 10);
+if (pedida >= 1 && pedida <= slides.length) idx = pedida - 1;
+slides.forEach((s, i) => {
+  s.style.opacity = i === idx ? '1' : '0';
+  s.style.transform = i === idx ? 'translateX(0) scale(1)' : 'translateX(46px) scale(.98)';
+  s.style.pointerEvents = i === idx ? 'auto' : 'none';
+  s.style.zIndex = i === idx ? 3 : 1;
+  applyStage(s, 0);
+});
+if (location.search.includes('revelar')) { stage = maxStage(slides[idx]); applyStage(slides[idx], stage); }
+updateChrome();
+</script>
+</body>
+</html>
