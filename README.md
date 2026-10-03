@@ -10,7 +10,8 @@ Este repo funciona como **hub**: aquí viven los materiales de las sesiones de l
 SMALC-AD26/
 ├── sesion-02-vscode-git-opencv-yolo/   # Materiales de la Sesión 2 (VSCode, Git, GitHub, OpenCV, YOLO)
 ├── sesion-03-QueEsUnDron/              # Materiales de la Sesión 3 (primeros scripts del dron Tello)
-└── sesion-04-opencv-rally/             # Materiales de la Sesión 4 (OpenCV desde cero + Rally de visión)
+├── sesion-04-opencv-rally/             # Materiales de la Sesión 4 (OpenCV desde cero + Rally de visión)
+└── sesion-05-PID-Dron/                 # Materiales de la Sesión 5 (control PID del dron)
 ```
 
 Cada sesión o reto vive en su propia carpeta, con su propio README explicando qué hay adentro y cómo usarlo.
