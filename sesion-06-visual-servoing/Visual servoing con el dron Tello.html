@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Visual servoing con el dron Tello</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#EEF4F2;--ink:#14262E;--mut:#4B6470;--card:#fff;--line:#C9D9D6;--acc:#3E9B1F;--blue:#1F5FD1;--red:#D6333C;--code:#14262E;--codeink:#E6F2EE;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0F1B20;--ink:#E6F2EE;--mut:#9DB4BC;--card:#172830;--line:#2B424B;--acc:#7ACB2E;--blue:#6EA2FF;--red:#FF6B73;--code:#0A1317;--codeink:#E6F2EE;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0F1B20;--ink:#E6F2EE;--mut:#9DB4BC;--card:#172830;--line:#2B424B;--acc:#7ACB2E;--blue:#6EA2FF;--red:#FF6B73;--code:#0A1317;--codeink:#E6F2EE;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:clamp(16px,1.6vw,22px)/1.45 "Atkinson Hyperlegible",system-ui,sans-serif;overflow:hidden}
+h1,h2{font-family:"Bricolage Grotesque",system-ui,sans-serif;line-height:1.05;margin:0 0 .5em;letter-spacing:-.01em}
+h1{font-size:clamp(34px,6vw,84px);font-weight:800}
+h2{font-size:clamp(26px,3.8vw,54px);font-weight:800}
+p{margin:.4em 0;max-width:34em}
+.slide{position:absolute;inset:0;padding:clamp(20px,5vh,56px) clamp(20px,6vw,90px) 70px;display:flex;flex-direction:column;justify-content:flex-start;overflow-y:auto;opacity:0;visibility:hidden;transform:translateX(40px);transition:opacity .45s ease,transform .45s ease,visibility 0s .45s}
+.slide::before,.slide::after{content:"";flex:1 0 0}
+.slide.on{opacity:1;visibility:visible;transform:none;transition:opacity .45s ease,transform .45s ease}
+.slide.past{transform:translateX(-40px)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:clamp(18px,4vw,60px);align-items:center}
+@media (max-width:760px){.cols{grid-template-columns:1fr}}
+.card{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:.8em 1em}
+pre{background:var(--code);color:var(--codeink);border-radius:12px;padding:1em 1.1em;font:clamp(13px,1.4vw,19px)/1.5 ui-monospace,Menlo,Consolas,monospace;overflow-x:auto;margin:.4em 0}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:0 .3em}
+pre code{background:none;border:0;padding:0}
+.g{color:#7ACB2E}.b{color:#7FB0FF}.r{color:#FF8189}.c{color:#8FA9B2}
+.loop{display:flex;flex-wrap:wrap;gap:.7em;margin-top:1em}
+.step{flex:1 1 9em;border:2px solid var(--line);border-radius:14px;background:var(--card);padding:.7em .9em;animation:glow 6.4s infinite}
+.step:nth-child(2){animation-delay:1.6s}.step:nth-child(3){animation-delay:3.2s}.step:nth-child(4){animation-delay:4.8s}
+.step b{display:block;font:800 1.15em "Bricolage Grotesque",sans-serif}
+@keyframes glow{0%,22%{border-color:var(--acc);box-shadow:0 0 0 4px color-mix(in srgb,var(--acc) 30%,transparent)}30%,100%{border-color:var(--line);box-shadow:none}}
+.back{color:var(--mut);margin-top:.6em}
+/* viewfinder */
+.box{position:relative;width:100%;max-width:min(520px,52vh*1.333);aspect-ratio:4/3;background:var(--code);border-radius:14px;overflow:hidden;touch-action:none;cursor:crosshair;border:2px solid var(--line)}
+.box::before,.box::after{content:"";position:absolute;background:#fff;opacity:.9}
+.box::before{left:calc(50% - 12px);top:50%;width:24px;height:2px}
+.box::after{top:calc(50% - 12px);left:50%;height:24px;width:2px}
+.box svg{position:absolute;inset:0;width:100%;height:100%}
+.dot{position:absolute;width:15%;aspect-ratio:1;border-radius:50%;background:#7ACB2E;border:3px solid #fff;transform:translate(-50%,-50%);outline:2px solid #1F8A3C}
+.out{font:700 1em ui-monospace,Menlo,Consolas,monospace;margin-top:.6em;min-height:3.2em}
+.out span{display:block}
+.hint{color:var(--mut);font-size:.85em}
+ul{padding-left:1.1em;margin:.4em 0}li{margin:.35em 0}
+.tag{display:inline-block;border:2px solid var(--acc);border-radius:99px;padding:.05em .7em;font-weight:700;margin-bottom:.8em}
+.fig{max-width:300px;width:100%;color:var(--ink)}
+/* chrome */
+.bar{position:fixed;left:0;top:env(safe-area-inset-top,0px);height:5px;background:var(--acc);transition:width .4s;z-index:20}
+.nav{position:fixed;left:0;right:0;bottom:0;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:10px;align-items:center;justify-content:flex-end;z-index:20}
+.nav button{font:700 1em "Atkinson Hyperlegible",sans-serif;color:var(--ink);background:var(--card);border:2px solid var(--line);border-radius:10px;padding:.35em .9em;cursor:pointer}
+.nav button:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.nav .n{margin-right:auto;color:var(--mut)}
+#notes{position:fixed;left:0;right:0;bottom:0;max-height:42%;overflow:auto;background:var(--code);color:var(--codeink);padding:14px clamp(16px,6vw,90px) 70px;z-index:15;font-size:.95em;transform:translateY(100%);transition:transform .3s}
+#notes.show{transform:none}
+#notes b{color:#7ACB2E}
+@media (prefers-reduced-motion:reduce){.slide,.slide.on,.bar,#notes{transition:none}.step{animation:none}}
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+
+<!-- 1 -->
+<section class="slide">
+  <div class="cols">
+    <div>
+      <span class="tag">Dron Tello + cámara</span>
+      <h1>Un dron que sigue un color</h1>
+      <p>Visual servoing: usar lo que ve la cámara para decidir cómo moverse.</p>
+    </div>
+    <div class="vf" data-mode="auto"><div class="box"><svg viewBox="0 0 640 480" preserveAspectRatio="none"><line stroke="#6EA2FF" stroke-width="3"/></svg><i class="dot"></i></div><div class="out"></div><div class="hint">Arrastra la pelota verde con el dedo o el mouse.</div></div>
+  </div>
+  <aside hidden>
+    <b>Apertura (2 min).</b> Pregunta: ¿cómo hace un humano para atrapar una pelota? Mira, se da cuenta de dónde está y mueve la mano. Hoy el dron hará lo mismo, paso a paso, con 6 lecciones. Pide a alguien que arrastre la pelota verde en la pantalla: la línea azul es la distancia entre el centro de la cámara y el objeto. Esa línea será la protagonista de toda la clase. Aclara que hoy no escribimos código nuevo difícil: entendemos las ideas que usarán en la actividad final.
+  </aside>
+</section>
+
+<!-- 2 -->
+<section class="slide">
+  <h2>¿Qué es visual servoing?</h2>
+  <p>El dron repite estos cuatro pasos una y otra vez, muy rápido.</p>
+  <div class="loop">
+    <div class="step"><b>1. Ver</b>La cámara toma una imagen.</div>
+    <div class="step"><b>2. Medir el error</b>¿Qué tan lejos está el objeto del centro?</div>
+    <div class="step"><b>3. Calcular</b>Más error, más velocidad de corrección.</div>
+    <div class="step"><b>4. Mover</b>El dron gira o sube y vuelve al paso 1.</div>
+  </div>
+  <p class="back">Un ciclo que se repite se llama lazo de control.</p>
+  <aside hidden>
+    <b>Idea central (3 min).</b> Los cuadros se iluminan en orden para mostrar el ciclo. Relación con el código: todo esto ocurre dentro del <code>while</code> que dura DURACION_SEGUNDOS. En cada vuelta del while el dron hace los cuatro pasos. Analogía: conducir una bicicleta; miras, notas que te desvías, corriges el manubrio, y repites. Pregunta de control: ¿qué pasa si el dron solo mira una vez y nunca vuelve a mirar? Adelanto: las lecciones 1 y 2 miden, la 3 detecta, la 4 calcula la salida y la 5 la envía al dron y la 6 recorre un cuadrado.
+  </aside>
+</section>
+
+<!-- PID review -->
+<section class="slide">
+  <h2>Repaso rápido: control PID</h2>
+  <p>Un controlador compara lo que quieres con lo que tienes (el error) y decide cuánto corregir. PID combina tres ideas:</p>
+  <div class="loop">
+    <div class="card" style="flex:1 1 11em"><b style="display:block;font:800 1.2em 'Bricolage Grotesque',sans-serif">P: proporcional</b>Mira el presente. Más error, más corrección.</div>
+    <div class="card" style="flex:1 1 11em"><b style="display:block;font:800 1.2em 'Bricolage Grotesque',sans-serif">I: integral</b>Mira el pasado. Suma el error acumulado y empuja más si no se quita.</div>
+    <div class="card" style="flex:1 1 11em"><b style="display:block;font:800 1.2em 'Bricolage Grotesque',sans-serif">D: derivativa</b>Mira el futuro. Si el error baja muy rápido, frena para no pasarse.</div>
+  </div>
+  <p class="back">En este curso solo usamos la P: con ella basta para centrar un color.</p>
+  <aside hidden>
+    <b>Repaso PID (3 min).</b> No se programa I ni D; es solo cultura general para que reconozcan el nombre. Analogía de la bicicleta: P es girar el manubrio más cuanto más te desvías. I es notar que llevas rato desviado hacia un lado y corregir un poco más cada segundo. D es notar que ya vuelves al camino muy rápido y aflojar para no pasarte al otro lado. Fórmula en palabras: salida = KP por el error, más KI por el error acumulado, más KD por qué tan rápido cambia el error. En nuestro código solo existe KP_YAW y KP_ALTURA; por eso mismo si KP es muy grande el dron oscila, y a veces la D se usa para calmarlo. Pregunta: ¿por qué crees que la lección 4 solo tiene KP?
+  </aside>
+</section>
+
+<!-- 3: lesson 1 -->
+<section class="slide">
+  <div class="cols">
+    <div>
+      <span class="tag">Lección 1</span>
+      <h2>Encontrar el centro</h2>
+      <p>El frame es una imagen de <code>ANCHO</code> × <code>ALTO</code> píxeles. Su centro está a la mitad de cada lado.</p>
+      <pre><code>ANCHO = 640
+ALTO = 480
+centro_x = ANCHO // 2
+centro_y = ALTO // 2</code></pre>
+      <p class="hint"><code>//</code> divide y deja un número entero. El píxel (0, 0) está arriba a la izquierda.</p>
+    </div>
+    <div class="vf" data-mode="pos"><div class="box"><svg viewBox="0 0 640 480" preserveAspectRatio="none"><line stroke="#6EA2FF" stroke-width="3"/></svg><i class="dot"></i></div><div class="out"></div><div class="hint">Arrastra el objeto y mira sus coordenadas.</div></div>
+  </div>
+  <aside hidden>
+    <b>Lección 1 (4 min).</b> Una imagen es una cuadrícula de píxeles; cada punto se nombra con (x, y). Aclara que y crece hacia abajo, igual que al leer una página. Pregunta: si el frame mide 640 por 480, ¿cuánto vale la mitad en cada eje? Es el ejercicio que completan en el código: centro_x y centro_y. Luego prueben con los tres objetos de la lista: (100, 100), (320, 240) y (500, 350). ¿Cuál está justo en el centro?
+  </aside>
+</section>
+
+<!-- 4: lesson 2 -->
+<section class="slide">
+  <div class="cols">
+    <div>
+      <span class="tag">Lección 2</span>
+      <h2>Medir el error</h2>
+      <p>El error dice qué tan lejos está el objeto del centro, en cada eje.</p>
+      <pre><code>error_x = x - centro_x
+error_y = y - centro_y</code></pre>
+      <ul class="hint">
+        <li>(100, 100) da error (-220, -140)</li>
+        <li>(320, 240) da error (0, 0)</li>
+        <li>(500, 350) da error (180, 110)</li>
+      </ul>
+      <p class="hint">Negativo: izquierda o arriba. Positivo: derecha o abajo. Error cero: el objeto está centrado. La cámara no mide distancias, solo la posición en la imagen.</p>
+    </div>
+    <div class="vf" data-mode="error"><div class="box"><svg viewBox="0 0 640 480" preserveAspectRatio="none"><line stroke="#6EA2FF" stroke-width="3"/></svg><i class="dot"></i></div><div class="out"></div></div>
+  </div>
+  <aside hidden>
+    <b>Lección 2 (5 min).</b> Error = donde está el objeto menos donde lo queremos (el centro). Arrastren la pelota: cuando está en el centro, ambos errores valen cero, y esa es la meta del dron. Pregunta: ¿qué signo tiene error_x si el objeto está a la derecha? Compartan resultados de las cuatro posiciones del código. Importante: en las lecciones 2, 3 y 4 error_y positivo significa "abajo" porque así crece y en la imagen. En la lección del dron se invierte para que positivo sea "arriba".
+  </aside>
+</section>
+
+<!-- 5: lesson 3 -->
+<section class="slide">
+  <div class="cols">
+    <div>
+      <span class="tag">Lección 3</span>
+      <h2>Detectar y centrar</h2>
+      <ul>
+        <li><code>inRange</code> crea la máscara del color (rango <code>BAJO</code> y <code>ALTO</code>).</li>
+        <li><code>findContours</code> encuentra las manchas.</li>
+        <li>Solo valen las mayores que <code>AREA_MINIMA</code>.</li>
+        <li><code>boundingRect</code> encierra la más grande en un rectángulo.</li>
+      </ul>
+    </div>
+    <div>
+      <svg class="fig" viewBox="0 0 300 190" role="img" aria-label="Rectángulo con su esquina (x, y) y su centro"><rect x="50" y="40" width="200" height="110" rx="4" fill="none" stroke="#3E9B1F" stroke-width="4"/><circle cx="50" cy="40" r="7" fill="#D6333C"/><circle cx="150" cy="95" r="7" fill="#1F5FD1"/><text x="56" y="30" fill="currentColor" font-size="15">esquina (x, y)</text><text x="160" y="90" fill="currentColor" font-size="15">centro</text><text x="110" y="172" fill="currentColor" font-size="14">ancho_objeto</text></svg>
+      <pre><code>centro_objeto = (
+  x + ancho_objeto // 2,
+  y + alto_objeto // 2)</code></pre>
+    </div>
+  </div>
+  <p class="hint">El rectángulo te da su esquina superior izquierda. Para llegar al centro sumas la mitad del ancho y del alto. Usa objetos verdes; si no salen en blanco en la máscara, ajusta BAJO y ALTO (calibrador de la Sesión 4). Con varios, se elige el de mayor área.</p>
+  <aside hidden>
+    <b>Lección 3 (6 min).</b> Ahora la computadora debe encontrar el objeto sola. Recorran la cadena: imagen, máscara blanca, contornos, filtro por área, el más grande. Muestren la ventana "Mascara" y muevan el objeto verde frente a la cámara. Punto clave: boundingRect devuelve x, y como la esquina superior izquierda del rectángulo; el centro se obtiene sumando la mitad del ancho y del alto. Es la línea que completan. La línea azul que se dibuja une el centro del frame con el centro del objeto: es el error de la lección 2, pero visible.
+  </aside>
+</section>
+
+<!-- 6: lesson 4 -->
+<section class="slide">
+  <div class="cols">
+    <div>
+      <span class="tag">Lección 4</span>
+      <h2>Probar el servo visual en pantalla</h2>
+      <p>La salida es proporcional al error, con un tope para que no sea exagerada.</p>
+      <pre><code>KP_X = 0.08
+SALIDA_MAXIMA = 30
+
+salida_x = max(-SALIDA_MAXIMA,
+  min(SALIDA_MAXIMA, KP_X * error_x))</code></pre>
+      <p class="hint">Aún no hay dron: la salida se escribe en la pantalla. Prueba ganancias mayores y menores (KP_X y KP_Y) y comenta qué cambia.</p>
+    </div>
+    <div class="vf" data-mode="speed" data-kp="0.08" data-max="30"><div class="box"><svg viewBox="0 0 640 480" preserveAspectRatio="none"><line stroke="#6EA2FF" stroke-width="3"/></svg><i class="dot"></i></div><div class="out"></div><div class="hint">Aleja el objeto hasta llegar al límite.</div></div>
+  </div>
+  <aside hidden>
+    <b>Lección 4 (6 min).</b> Control P: la P es de proporcional. Salida = ganancia × error. KP_X es un número pequeño: con error 100 da 8. max y min recortan el resultado entre -30 y 30, así que una salida nunca supera SALIDA_MAXIMA. En el código el hueco tiene KP_X * 1; deben cambiar el 1 por error_x (y por error_y en el otro eje). Pregunta: ¿qué pasa en pantalla cuando el objeto está en la esquina? Aparece "(límite)". Más adelante estas salidas serán las velocidades del dron.
+  </aside>
+</section>
+
+<!-- 7: lesson 5 -->
+<section class="slide">
+  <span class="tag">Lección 5</span>
+  <h2>Sigue el color con el Tello</h2>
+  <p>Es la misma idea de la lección 4, pero la salida mueve un dron de verdad.</p>
+  <div class="cols">
+    <ul>
+      <li>La cámara viene del dron: <code>tello.get_frame_read()</code>.</li>
+      <li>Girar usa <code>error_x</code>: velocidad de yaw.</li>
+      <li>Subir y bajar usa el error vertical, con arriba positivo: <code>centro_y - objeto_y</code>.</li>
+      <li>Las salidas se envían con <code>send_rc_control</code>.</li>
+      <li>Empieza con <code>MODO_VUELO = False</code>; la tecla <code>q</code> detiene y aterriza.</li>
+    </ul>
+    <pre><code>KP_YAW = 0.12
+KP_ALTURA = 0.08
+VELOCIDAD_MAXIMA = 20
+
+def limitar(valor, minimo, maximo):
+  return max(minimo, min(maximo, valor))</code></pre>
+  </div>
+  <aside hidden>
+    <b>Lección 5 (5 min).</b> Conecten con lo anterior: mismo error, misma ganancia P, mismo tope; cambian los nombres (yaw y altura) y que ahora el resultado va a send_rc_control. Compara con la lección 4: la función limitar hace lo mismo que max y min juntos. Explica por qué el error vertical se invierte: en la imagen y crece hacia abajo, pero para el dron un número positivo significa subir. En el código de la actividad las dos velocidades empiezan en cero y es lo que van a completar. La velocidad máxima baja a 20 por seguridad.
+  </aside>
+</section>
+
+<!-- 8: lesson 6 -->
+<section class="slide">
+  <div class="cols">
+    <div>
+      <span class="tag">Lección 6</span>
+      <h2>Recorre un cuadrado y sigue el color</h2>
+      <p>Dos tareas a la vez: la trayectoria avanza por tiempo y el servo visual sigue centrando el color.</p>
+      <ul>
+        <li>Cada lado dura <code>SEGUNDOS_POR_LADO</code> (3 s): adelante, derecha, atrás, izquierda.</li>
+        <li>El servo calcula yaw y altura como en la lección 5.</li>
+        <li><code>send_rc_control</code> junta las cuatro velocidades.</li>
+        <li>Sin color, todo queda en cero y el dron se detiene.</li>
+      </ul>
+      <p class="hint">El cuadrado depende del tiempo: no será perfecto.</p>
+    </div>
+    <div>
+      <svg class="fig" viewBox="0 0 260 200" role="img" aria-label="Cuadrado recorrido en cuatro lados: adelante, derecha, atrás, izquierda"><defs><marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#3E9B1F"/></marker></defs><g stroke="#3E9B1F" stroke-width="4" marker-end="url(#ar)"><line x1="70" y1="160" x2="70" y2="52"/><line x1="70" y1="40" x2="178" y2="40"/><line x1="190" y1="40" x2="190" y2="148"/><line x1="190" y1="160" x2="82" y2="160"/></g><circle cx="70" cy="160" r="7" fill="#1F5FD1"/><g fill="currentColor" font-size="15" font-weight="700"><text x="38" y="105">1</text><text x="126" y="28">2</text><text x="206" y="105">3</text><text x="126" y="186">4</text></g></svg>
+      <pre><code>lado = int(tiempo // SEGUNDOS_POR_LADO) % 4
+movimientos = [
+  (0, VELOCIDAD_AVANCE),
+  (VELOCIDAD_LATERAL, 0),
+  (0, -VELOCIDAD_AVANCE),
+  (-VELOCIDAD_LATERAL, 0)]</code></pre>
+    </div>
+  </div>
+  <aside hidden>
+    <b>Lección 6 (6 min).</b> Reto final: combinar dos cosas. El tiempo decide el lado: tiempo dividido entre 3 segundos, con // y % 4, da 0, 1, 2, 3 y vuelve a empezar. Cada lado es una pareja (lateral, avance): adelante, derecha, atrás, izquierda. Mientras tanto, el servo visual corrige giro (yaw) y altura con KP, igual que en la lección 5. El orden de send_rc_control es izquierda/derecha, adelante/atrás, arriba/abajo y giro. El programa dura 12 segundos (4 lados de 3 s). Aclara el límite honesto: es una trayectoria por tiempo, el dron puede derivar y el cuadrado no será exacto. Empiecen con MODO_VUELO = False y el staff revisa el espacio antes de volar. Pregunta: ¿qué pasaría si el color se pierde a mitad del lado 2?
+  </aside>
+</section>
+
+<!-- 6 -->
+<section class="slide">
+  <h2>Seguridad primero</h2>
+  <div class="cols">
+    <ul>
+      <li><code>MODO_VUELO = False</code>: el dron no despega y solo ves los números. Pruébalo siempre así primero.</li>
+      <li>Si se pierde el color, las velocidades se quedan en cero.</li>
+      <li>El programa termina solo después de <code>DURACION_SEGUNDOS</code>, o al presionar <code>q</code>.</li>
+      <li>Al terminar, el dron aterriza aunque haya un error.</li>
+    </ul>
+    <div class="card"><b>Regla del equipo:</b> una persona tiene la mano sobre la tecla <code>q</code> en todo momento y todos se mantienen a distancia del dron.</div>
+  </div>
+  <aside hidden>
+    <b>Seguridad (3 min).</b> Recalca el orden de trabajo: primero MODO_VUELO = False, revisar que el recuadro verde siga al objeto y que los errores cambien de signo correctamente; solo después probar en vuelo. Mostrar que el bloque <code>finally</code> manda las velocidades a cero y aterriza. Verifica batería con el mensaje inicial. Define roles: piloto de la tecla q, quien sostiene el objeto, quien observa la pantalla. Espacio despejado, sin hélices cerca de caras.
+  </aside>
+</section>
+
+<!-- 7 -->
+<section class="slide">
+  <h2>Tu reto</h2>
+  <div class="cols">
+    <ol style="padding-left:1.2em;margin:0">
+      <li>Ajusta <code>BAJO</code> y <code>ALTO</code> hasta que la máscara muestre solo tu objeto.</li>
+      <li>Completa las dos líneas de velocidad con <code>limitar</code>.</li>
+      <li>Prueba con <code>MODO_VUELO = False</code> y mueve el objeto.</li>
+      <li>Activa el vuelo con KP pequeño y súbelo poco a poco.</li>
+    </ol>
+    <div class="card"><b>Para pensar:</b>
+      <ul><li>¿Qué pasa si KP es muy grande?</li><li>¿Y si es casi cero?</li><li>¿Cómo cambia la luz del salón tu máscara?</li></ul>
+    </div>
+  </div>
+  <aside hidden>
+    <b>Cierre y actividad (resto de la clase).</b> Los estudiantes trabajan en equipos. Circula y revisa primero la máscara; la mayoría de los problemas vienen de un rango HSV mal ajustado. Cuando el yaw funciona, que prueben la altura. Cierra con las preguntas para pensar: KP grande provoca oscilaciones, KP casi cero hace que el dron reaccione muy lento. Reflexión final: el mismo ciclo ver, medir, corregir, mover se usa en robots, autos autónomos y cámaras que siguen personas.
+  </aside>
+</section>
+
+<div id="notes"></div>
+<div class="nav"><span class="n" id="num"></span><button id="nb" aria-pressed="false">Notas (N)</button><button id="pv">Anterior</button><button id="nx">Siguiente</button></div>
+
+<script>
+(function(){
+var S=[].slice.call(document.querySelectorAll('.slide')),i=0,notes=document.getElementById('notes');
+function show(n){
+  i=Math.max(0,Math.min(S.length-1,n));
+  S.forEach(function(s,k){s.classList.toggle('on',k===i);s.classList.toggle('past',k<i)});
+  document.getElementById('bar').style.width=((i+1)/S.length*100)+'%';
+  document.getElementById('num').textContent=(i+1)+' / '+S.length;
+  var a=S[i].querySelector('aside');notes.innerHTML=a?a.innerHTML:'';
+  try{history.replaceState(null,'','#'+(i+1))}catch(e){}
+}
+function tn(){var o=notes.classList.toggle('show');document.getElementById('nb').setAttribute('aria-pressed',o)}
+document.getElementById('nx').onclick=function(){show(i+1)};
+document.getElementById('pv').onclick=function(){show(i-1)};
+document.getElementById('nb').onclick=tn;
+document.addEventListener('keydown',function(e){
+  var k=e.key;
+  if(k==='ArrowRight'||k==='PageDown'||k===' '){e.preventDefault();show(i+1)}
+  else if(k==='ArrowLeft'||k==='PageUp'){show(i-1)}
+  else if(k==='Home'){show(0)}else if(k==='End'){show(S.length-1)}
+  else if(k==='n'||k==='N'){tn()}
+  else if(k==='f'||k==='F'){try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()}catch(x){}}
+});
+var sx=null;
+document.addEventListener('touchstart',function(e){sx=e.target.closest('.box')?null:e.touches[0].clientX},{passive:true});
+document.addEventListener('touchend',function(e){if(sx===null)return;var d=e.changedTouches[0].clientX-sx;if(Math.abs(d)>60)show(i+(d<0?1:-1));sx=null},{passive:true});
+
+/* viewfinder demos */
+var W=640,H=480;
+function lim(v,m){return Math.max(-m,Math.min(m,v))}
+var reduce=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+[].forEach.call(document.querySelectorAll('.vf'),function(el){
+  var box=el.querySelector('.box'),dot=el.querySelector('.dot'),ln=el.querySelector('line'),out=el.querySelector('.out'),mode=el.dataset.mode;
+  var kp=parseFloat(el.dataset.kp||.08),mx=parseFloat(el.dataset.max||30);
+  var x=W*.7,y=H*.3,auto=mode==='auto'&&!reduce,t=0;
+  function draw(){
+    dot.style.left=(x/W*100)+'%';dot.style.top=(y/H*100)+'%';
+    ln.setAttribute('x1',W/2);ln.setAttribute('y1',H/2);ln.setAttribute('x2',x);ln.setAttribute('y2',y);
+    var ex=Math.round(x-W/2),ey=Math.round(y-H/2),h;
+    if(mode==='pos'){h='<span>Objeto en ('+Math.round(x)+', '+Math.round(y)+')</span><span>Centro del frame: ('+W/2+', '+H/2+')</span>'}
+    else{
+      h='<span>error_x = '+ex+'   error_y = '+ey+'</span>';
+      if(mode==='speed'){
+        var rx=kp*ex,ry=kp*ey;
+        h+='<span>salida_x = '+Math.round(lim(rx,mx))+(Math.abs(rx)>mx?' (límite)':'')+'</span><span>salida_y = '+Math.round(lim(ry,mx))+(Math.abs(ry)>mx?' (límite)':'')+'</span>';
+      }
+    }
+    out.innerHTML=h;
+  }
+  function set(e){
+    var r=box.getBoundingClientRect();
+    x=Math.max(0,Math.min(W,(e.clientX-r.left)/r.width*W));
+    y=Math.max(0,Math.min(H,(e.clientY-r.top)/r.height*H));draw();
+  }
+  var drag=false;
+  box.addEventListener('pointerdown',function(e){drag=true;auto=false;box.setPointerCapture(e.pointerId);set(e)});
+  box.addEventListener('pointermove',function(e){if(drag)set(e)});
+  box.addEventListener('pointerup',function(){drag=false});
+  if(auto)setInterval(function(){if(!auto)return;t+=.04;x=W/2+Math.cos(t)*W*.32;y=H/2+Math.sin(t*1.3)*H*.28;draw()},40);
+  draw();
+});
+var h=parseInt(location.hash.slice(1),10);show(isNaN(h)?0:h-1);
+})();
+</script>
+</body>
+</html>
