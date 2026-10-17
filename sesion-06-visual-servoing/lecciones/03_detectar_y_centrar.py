@@ -24,7 +24,7 @@ while True:
         contorno = max(candidatos, key=cv2.contourArea)
         x, y, ancho_objeto, alto_objeto = cv2.boundingRect(contorno)
         # ✏️ COMPLETA: calcula el centro del rectangulo detectado.
-        centro_objeto = (x + ancho_objeto // 2, y + alto_objeto // 2)
+        centro_objeto = (x,y)
         cv2.rectangle(frame, (x, y), (x + ancho_objeto, y + alto_objeto), (0, 255, 0), 2)
         cv2.circle(frame, centro_objeto, 6, (0, 0, 255), -1)
         cv2.line(frame, centro_frame, centro_objeto, (255, 0, 0), 2)

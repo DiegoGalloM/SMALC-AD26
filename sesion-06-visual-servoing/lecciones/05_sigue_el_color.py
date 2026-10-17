@@ -55,8 +55,8 @@ try:
             error_x = objeto_x - centro_x
             error_y = centro_y - objeto_y
             # calcula las correcciones P y limitalas a VELOCIDAD_MAXIMA.
-            velocidad_yaw = 0
-            velocidad_vertical = 0
+            velocidad_yaw = limitar(1 * KP_YAW, -VELOCIDAD_MAXIMA, VELOCIDAD_MAXIMA)
+            velocidad_vertical = limitar(1 * KP_ALTURA, -VELOCIDAD_MAXIMA, VELOCIDAD_MAXIMA)
 
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
             cv2.circle(frame, (objeto_x, objeto_y), 6, (0, 0, 255), -1)
