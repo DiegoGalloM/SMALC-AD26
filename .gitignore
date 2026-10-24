@@ -4,5 +4,6 @@ __pycache__/
 .vscode/
 *.pt
 
-# En esta rama (instructores) SÍ se guarda sesion-04-opencv-rally/instructores/.
-# En master está ignorada para que las respuestas no lleguen a los participantes.
+# En esta rama (instructores) SÍ se guardan las carpetas instructores/ de cada sesión
+# (sesion-04-opencv-rally/instructores/ y sesion-07-maquinas-de-estados/instructores/).
+# En master están ignoradas para que las respuestas no lleguen a los participantes.
