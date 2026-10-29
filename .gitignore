@@ -5,5 +5,5 @@ __pycache__/
 *.pt
 
 # En esta rama (instructores) SÍ se guardan las carpetas instructores/ de cada sesión
-# (sesion-04-opencv-rally/instructores/ y sesion-07-maquinas-de-estados/instructores/).
+# (sesion-04-opencv-rally/, sesion-07-maquinas-de-estados/ y sesion-08-integracion/).
 # En master están ignoradas para que las respuestas no lleguen a los participantes.
