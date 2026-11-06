@@ -30,8 +30,8 @@ while True:
         error_x = objeto_x - centro_x
         error_y = objeto_y - centro_y
         # ✏️ COMPLETA: salida proporcional = ganancia * error, limitada por SALIDA_MAXIMA.
-        salida_x = max(-SALIDA_MAXIMA, min(SALIDA_MAXIMA, KP_X * 1))
-        salida_y = max(-SALIDA_MAXIMA, min(SALIDA_MAXIMA, KP_Y * 1))
+        salida_x = max(-SALIDA_MAXIMA, min(SALIDA_MAXIMA, KP_X * error_x))
+        salida_y = max(-SALIDA_MAXIMA, min(SALIDA_MAXIMA, KP_Y * error_y))
 
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
         cv2.circle(frame, (objeto_x, objeto_y), 6, (0, 0, 255), -1)

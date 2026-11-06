@@ -26,7 +26,7 @@ VELOCIDAD_LATERAL = 20
 VELOCIDAD_AVANCE = 20
 SEGUNDOS_POR_LADO = 3
 INTERVALO_CONTROL = 0.05
-MODO_VUELO = False
+MODO_VUELO = True
 
 
 def limitar(valor, minimo, maximo):

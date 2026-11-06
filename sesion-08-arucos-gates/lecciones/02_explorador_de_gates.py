@@ -1,0 +1,254 @@
+"""LECCIÓN 2 — Proyecto final: busca y atraviesa gates con ArUco.
+
+Por seguridad, MODO_VUELO empieza en False. En ese modo el programa solo muestra
+los controles que propondría. El staff revisa el espacio y habilita el vuelo.
+
+Teclas: t = iniciar misión, q = detener y aterrizar.
+"""
+
+import time
+
+import cv2
+from djitellopy import Tello
+
+from aruco_utils import crear_detector, detectar_marcadores
+
+# CONFIGURACIÓN DE LA MISIÓN
+RUTA_IDS = [0, 1, 2]  # ID de cada gate, en el orden que se deben atravesar
+MODO_VUELO = False  # Solo el staff puede cambiarlo a True
+BATERIA_MINIMA = 50
+
+# AJUSTES PARA EL MONTAJE: el tamaño en píxeles depende de la cámara y la gate
+TOLERANCIA_CENTRADO = 35  # píxeles desde el centro de la imagen
+TAMANO_PARA_CRUZAR = 170  # lado del marcador en píxeles; ajustar en la prueba
+VELOCIDAD_GIRO_MAXIMA = 12
+VELOCIDAD_AVANCE = 10
+SEGUNDOS_PARA_CRUZAR = 1.0
+SEGUNDOS_BUSCANDO = 8.0
+SEGUNDOS_MAXIMOS_MISION = 45.0
+INTERVALO_CONTROL = 0.05
+
+
+def limitar(valor, minimo, maximo):
+    return max(minimo, min(maximo, valor))
+
+
+def marcador_con_id(marcadores, objetivo_id):
+    for marcador in marcadores:
+        if marcador["id"] == objetivo_id:
+            return marcador
+    return None
+
+
+def main():
+    tello = Tello()
+    streaming = False
+    despego = False
+    try:
+        tello.connect()
+        bateria = tello.get_battery()
+        print(f"Tello conectado. Batería: {bateria}%")
+        tello.streamon()
+        streaming = True
+        lector = tello.get_frame_read()
+        detector = crear_detector()
+        time.sleep(2)
+
+        estado = "ESPERA"
+        indice_ruta = 0
+        inicio_mision = None
+        inicio_busqueda = None
+        inicio_cruce = None
+        frames_centrados = 0
+        mensaje = "Presiona t para iniciar la prueba"
+
+        while True:
+            frame_rgb = lector.frame
+            if frame_rgb is None:
+                continue
+            frame = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+            marcadores, esquinas, ids = detectar_marcadores(frame, detector)
+            alto, ancho = frame.shape[:2]
+            centro_x = ancho // 2
+            objetivo_id = RUTA_IDS[indice_ruta] if indice_ruta < len(RUTA_IDS) else None
+            objetivo = marcador_con_id(marcadores, objetivo_id) if objetivo_id is not None else None
+
+            if ids is not None:
+                cv2.aruco.drawDetectedMarkers(frame, esquinas, ids)
+            cv2.drawMarker(
+                frame, (centro_x, alto // 2), (255, 255, 255), cv2.MARKER_CROSS, 28, 2
+            )
+
+            # Orden propuesta: izquierda/derecha, adelante/atrás, arriba/abajo, giro.
+            rc = (0, 0, 0, 0)
+            ahora = time.time()
+            if estado == "BUSCAR":
+                if objetivo is not None:
+                    estado = "ALINEAR"
+                    frames_centrados = 0
+                    mensaje = f"Encontré ID {objetivo_id}; alineando"
+                elif ahora - inicio_busqueda >= SEGUNDOS_BUSCANDO:
+                    estado = "ATERRIZAR"
+                    mensaje = "No encontré la gate a tiempo; aterrizando"
+                else:
+                    # Giro lento en el sitio; nunca avanza mientras busca.
+                    rc = (0, 0, 0, 8)
+
+            elif estado == "ALINEAR":
+                if objetivo is None:
+                    estado = "BUSCAR"
+                    inicio_busqueda = ahora
+                    mensaje = f"ID {objetivo_id} perdido; buscando de nuevo"
+                else:
+                    error_x = objetivo["centro_x"] - centro_x
+                    if abs(error_x) <= TOLERANCIA_CENTRADO:
+                        frames_centrados += 1
+                        if frames_centrados >= 5:
+                            estado = "ACERCARSE"
+                            mensaje = f"ID {objetivo_id} centrado; acercándose"
+                    else:
+                        frames_centrados = 0
+                        giro = int(
+                            limitar(0.08 * error_x, -VELOCIDAD_GIRO_MAXIMA, VELOCIDAD_GIRO_MAXIMA)
+                        )
+                        rc = (0, 0, 0, giro)
+                        mensaje = f"Alineando ID {objetivo_id}; error x = {error_x:.0f} px"
+
+            elif estado == "ACERCARSE":
+                if objetivo is None:
+                    estado = "BUSCAR"
+                    inicio_busqueda = ahora
+                    mensaje = f"ID {objetivo_id} perdido; buscando de nuevo"
+                else:
+                    error_x = objetivo["centro_x"] - centro_x
+                    if abs(error_x) > TOLERANCIA_CENTRADO:
+                        estado = "ALINEAR"
+                        frames_centrados = 0
+                        mensaje = "Me desvié del centro; realineando"
+                    elif objetivo["lado_px"] >= TAMANO_PARA_CRUZAR:
+                        estado = "CRUZAR"
+                        inicio_cruce = ahora
+                        mensaje = f"ID {objetivo_id} cerca; cruzando despacio"
+                    else:
+                        rc = (0, VELOCIDAD_AVANCE, 0, 0)
+                        mensaje = (
+                            f"Acercándose a ID {objetivo_id}; "
+                            f"tamaño {objetivo['lado_px']:.0f} px"
+                        )
+
+            elif estado == "CRUZAR":
+                if ahora - inicio_cruce < SEGUNDOS_PARA_CRUZAR:
+                    rc = (0, VELOCIDAD_AVANCE, 0, 0)
+                else:
+                    indice_ruta += 1
+                    if indice_ruta >= len(RUTA_IDS):
+                        estado = "ATERRIZAR"
+                        mensaje = "Ruta completada; aterrizando"
+                    else:
+                        estado = "BUSCAR"
+                        inicio_busqueda = ahora
+                        mensaje = f"Gate cruzada; buscando ID {RUTA_IDS[indice_ruta]}"
+
+            elif estado == "ATERRIZAR":
+                rc = (0, 0, 0, 0)
+                if despego:
+                    tello.send_rc_control(0, 0, 0, 0)
+                    time.sleep(0.5)
+                    tello.land()
+                    despego = False
+                estado = "FIN"
+
+            elif estado == "FIN":
+                rc = (0, 0, 0, 0)
+
+            if inicio_mision is not None and estado not in ("ATERRIZAR", "FIN"):
+                if ahora - inicio_mision >= SEGUNDOS_MAXIMOS_MISION:
+                    estado = "ATERRIZAR"
+                    rc = (0, 0, 0, 0)
+                    mensaje = "Tiempo máximo alcanzado; aterrizando"
+
+            if MODO_VUELO and despego:
+                tello.send_rc_control(*rc)
+
+            if objetivo is not None:
+                cv2.circle(
+                    frame,
+                    (int(objetivo["centro_x"]), int(objetivo["centro_y"])),
+                    6,
+                    (0, 255, 255),
+                    -1,
+                )
+                cv2.line(
+                    frame,
+                    (centro_x, alto // 2),
+                    (int(objetivo["centro_x"]), int(objetivo["centro_y"])),
+                    (255, 100, 0),
+                    2,
+                )
+
+            id_texto = str(objetivo_id) if objetivo_id is not None else "fin"
+            cv2.putText(
+                frame,
+                f"Estado: {estado} | ID objetivo: {id_texto}",
+                (10, 30),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.65,
+                (0, 255, 0),
+                2,
+            )
+            cv2.putText(
+                frame,
+                mensaje,
+                (10, 60),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.55,
+                (0, 255, 255),
+                2,
+            )
+            modo = "VUELO" if MODO_VUELO else "PRUEBA SIN VOLAR"
+            cv2.putText(
+                frame,
+                f"{modo} | RC propuesto: {rc} | t=iniciar, q=salir",
+                (10, alto - 15),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (255, 255, 255),
+                1,
+            )
+            cv2.imshow("Proyecto final - Explorador de gates", frame)
+
+            tecla = cv2.waitKey(1) & 0xFF
+            if tecla == ord("q"):
+                break
+            if tecla == ord("t") and estado == "ESPERA":
+                if MODO_VUELO and bateria < BATERIA_MINIMA:
+                    mensaje = f"Batería baja ({bateria}%). No se inicia el vuelo."
+                else:
+                    if MODO_VUELO:
+                        tello.takeoff()
+                        despego = True
+                        time.sleep(1)
+                    estado = "BUSCAR"
+                    inicio_mision = time.time()
+                    inicio_busqueda = inicio_mision
+                    mensaje = f"Buscando ID {RUTA_IDS[0]}"
+            time.sleep(INTERVALO_CONTROL)
+
+    finally:
+        if despego:
+            try:
+                tello.send_rc_control(0, 0, 0, 0)
+                time.sleep(0.5)
+                tello.land()
+            except Exception:
+                pass
+        if streaming:
+            try:
+                tello.streamoff()
+            except Exception:
+                pass
+        cv2.destroyAllWindows()
+
+
+if __name__ == "__main__":
+    main()

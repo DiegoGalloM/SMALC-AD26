@@ -40,6 +40,7 @@ while dron.sigue():
     elif estado == "ATERRIZANDO":
         dron.aterrizar()
         # ✏️ COMPLETA: cuando ya NO esté en el aire, regresa a "EN_TIERRA"
+
         #    Pista:  if not s.en_el_aire:
 
     # ✏️ MINI-RETO 2: el estado GIRANDO (descomenta y completa)
