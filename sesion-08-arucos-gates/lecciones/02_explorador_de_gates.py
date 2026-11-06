@@ -1,7 +1,7 @@
 """LECCIÓN 2 — Proyecto final: busca y atraviesa gates con ArUco.
 
-Por seguridad, MODO_VUELO empieza en False. En ese modo el programa solo muestra
-los controles que propondría. El staff revisa el espacio y habilita el vuelo.
+Con MODO_VUELO=False, el programa solo muestra los controles propuestos. Solo el
+staff puede habilitar el vuelo con MODO_VUELO=True después de revisar el espacio.
 
 Teclas: t = iniciar misión, q = detener y aterrizar.
 """
@@ -15,16 +15,19 @@ from aruco_utils import crear_detector, detectar_marcadores
 
 # CONFIGURACIÓN DE LA MISIÓN
 RUTA_IDS = [0, 1, 2]  # ID de cada gate, en el orden que se deben atravesar
-MODO_VUELO = False  # Solo el staff puede cambiarlo a True
-BATERIA_MINIMA = 50
+MODO_VUELO = True  # False = prueba; True = vuelo real (solo el staff)
+BATERIA_MINIMA = 10
 
 # AJUSTES PARA EL MONTAJE: el tamaño en píxeles depende de la cámara y la gate
 TOLERANCIA_CENTRADO = 35  # píxeles desde el centro de la imagen
 TAMANO_PARA_CRUZAR = 170  # lado del marcador en píxeles; ajustar en la prueba
 VELOCIDAD_GIRO_MAXIMA = 12
 VELOCIDAD_AVANCE = 10
+VELOCIDAD_BUSQUEDA = 20
+VELOCIDAD_SUBIDA = 60
+SEGUNDOS_SUBIDA = 2.0
 SEGUNDOS_PARA_CRUZAR = 1.0
-SEGUNDOS_BUSCANDO = 8.0
+SEGUNDOS_BUSCANDO = 18.0  # permite una búsqueda girando de hasta casi 360 grados
 SEGUNDOS_MAXIMOS_MISION = 45.0
 INTERVALO_CONTROL = 0.05
 
@@ -57,6 +60,7 @@ def main():
         estado = "ESPERA"
         indice_ruta = 0
         inicio_mision = None
+        inicio_subida = None
         inicio_busqueda = None
         inicio_cruce = None
         frames_centrados = 0
@@ -72,6 +76,9 @@ def main():
             centro_x = ancho // 2
             objetivo_id = RUTA_IDS[indice_ruta] if indice_ruta < len(RUTA_IDS) else None
             objetivo = marcador_con_id(marcadores, objetivo_id) if objetivo_id is not None else None
+            ids_visibles = sorted(
+                {m["id"] for m in marcadores if m["id"] in RUTA_IDS}
+            )
 
             if ids is not None:
                 cv2.aruco.drawDetectedMarkers(frame, esquinas, ids)
@@ -82,7 +89,16 @@ def main():
             # Orden propuesta: izquierda/derecha, adelante/atrás, arriba/abajo, giro.
             rc = (0, 0, 0, 0)
             ahora = time.time()
-            if estado == "BUSCAR":
+            if estado == "SUBIR":
+                if ahora - inicio_subida < SEGUNDOS_SUBIDA:
+                    rc = (0, 0, VELOCIDAD_SUBIDA, 0)
+                    mensaje = f"Subiendo: RC vertical {VELOCIDAD_SUBIDA} por {SEGUNDOS_SUBIDA:.0f} s"
+                else:
+                    estado = "BUSCAR"
+                    inicio_busqueda = ahora
+                    mensaje = f"Altura alcanzada; buscando ID {objetivo_id}"
+
+            elif estado == "BUSCAR":
                 if objetivo is not None:
                     estado = "ALINEAR"
                     frames_centrados = 0
@@ -91,8 +107,13 @@ def main():
                     estado = "ATERRIZAR"
                     mensaje = "No encontré la gate a tiempo; aterrizando"
                 else:
-                    # Giro lento en el sitio; nunca avanza mientras busca.
-                    rc = (0, 0, 0, 8)
+                    # Gira en el sitio y detecta todos los IDs de la ruta; solo
+                    # se acerca al ID esperado para conservar el orden de gates.
+                    rc = (0, 0, 0, VELOCIDAD_BUSQUEDA)
+                    if ids_visibles:
+                        mensaje = f"Veo IDs {ids_visibles}; girando para buscar ID {objetivo_id}"
+                    else:
+                        mensaje = f"Buscando ID {objetivo_id}; girando"
 
             elif estado == "ALINEAR":
                 if objetivo is None:
@@ -228,10 +249,10 @@ def main():
                         tello.takeoff()
                         despego = True
                         time.sleep(1)
-                    estado = "BUSCAR"
+                    estado = "SUBIR"
                     inicio_mision = time.time()
-                    inicio_busqueda = inicio_mision
-                    mensaje = f"Buscando ID {RUTA_IDS[0]}"
+                    inicio_subida = inicio_mision
+                    mensaje = f"Subiendo: RC vertical {VELOCIDAD_SUBIDA} por {SEGUNDOS_SUBIDA:.0f} s"
             time.sleep(INTERVALO_CONTROL)
 
     finally:

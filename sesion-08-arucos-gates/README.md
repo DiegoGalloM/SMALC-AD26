@@ -45,7 +45,7 @@ Esta lección solo muestra la cámara y los marcadores detectados. No despega ni
 
 ## Lección 2 — Proyecto final: explorador de gates
 
-Ejecuta `lecciones/02_explorador_de_gates.py`. El programa muestra el plan de movimiento en pantalla, pero `MODO_VUELO` empieza en `False` y no manda órdenes al dron.
+Ejecuta `lecciones/02_explorador_de_gates.py`. Verifica el valor de `MODO_VUELO`: en `False` el programa muestra el plan de movimiento, y en `True` manda órdenes al Tello al iniciar con **t**. Solo el staff debe habilitar el vuelo.
 
 1. Revisen el orden de IDs en `RUTA_IDS`. El proyecto viene configurado para encontrar los marcadores 0, 1 y 2 en ese orden.
 2. Presionen **t** para iniciar la misión de prueba. Muevan los marcadores frente a la cámara y observen los estados y controles propuestos.
@@ -53,7 +53,7 @@ Ejecuta `lecciones/02_explorador_de_gates.py`. El programa muestra el plan de mo
 4. Ajusten `TOLERANCIA_CENTRADO`, `TAMANO_PARA_CRUZAR` y `SEGUNDOS_PARA_CRUZAR` para su montaje. El tamaño es una señal aproximada, no una distancia exacta.
 5. Presionen **q** para salir.
 
-Para volar, **solo el staff** debe preparar el área, revisar el programa y cambiar `MODO_VUELO` a `True`. El vuelo comienza al presionar **t**. La tecla **q** detiene los controles y aterriza. Si el marcador esperado no aparece durante varios segundos, la misión termina y el dron aterriza.
+Para volar, **solo el staff** debe preparar el área y revisar `MODO_VUELO`. Al presionar **t**, el programa ordena un ascenso vertical con RC 50 durante 2 segundos y después comienza a buscar. La altura alcanzada depende del Tello y de la batería; coloca las gates para que su abertura quede a esa altura y verifica el ascenso en un área libre. La tecla **q** detiene los controles y aterriza. Durante la búsqueda, el dron gira en su sitio mientras detecta los IDs de la ruta; solo se acerca al ID que toca según el orden. Si no lo encuentra en 18 segundos, la misión termina y el dron aterriza.
 
 ## Ruta de la sesión — 120 minutos
 
