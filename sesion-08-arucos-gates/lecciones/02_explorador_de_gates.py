@@ -15,7 +15,7 @@ from aruco_utils import crear_detector, detectar_marcadores
 
 # CONFIGURACIÓN DE LA MISIÓN
 RUTA_IDS = [0, 1, 2]  # ID de cada gate, en el orden que se deben atravesar
-MODO_VUELO = True  # False = prueba; True = vuelo real (solo el staff)
+MODO_VUELO = False  # False = prueba; True = vuelo real (solo el staff)
 BATERIA_MINIMA = 10
 
 # AJUSTES PARA EL MONTAJE: el tamaño en píxeles depende de la cámara y la gate
