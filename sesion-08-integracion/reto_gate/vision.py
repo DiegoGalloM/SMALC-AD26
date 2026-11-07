@@ -16,7 +16,9 @@ AREA_MINIMA = 800  # manchas más chicas que esto son ruido
 def mascara_azul(foto):
     hsv = cv2.cvtColor(foto, cv2.COLOR_BGR2HSV)
     # Esta máscara está vacía: cambia los dos (0, 0, 0) por AZUL_BAJO y AZUL_ALTO
-    return cv2.inRange(hsv, (0, 0, 0), (0, 0, 0))
+    mascara = cv2.inRange(hsv, AZUL_BAJO, AZUL_ALTO)
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
+    return cv2.morphologyEx(mascara, cv2.MORPH_CLOSE, kernel)
 
 
 # ✏️ COMPLETA ESTA FUNCIÓN (1 línea): el rectángulo que encierra a la gate
@@ -25,9 +27,10 @@ def encontrar_gate(mascara):
     candidatos = [c for c in contornos if cv2.contourArea(c) > AREA_MINIMA]
     if not candidatos:
         return None  # no veo ninguna gate
-    gate = max(candidatos, key=cv2.contourArea)  # me quedo con la más grande
-    # Pista: return cv2.boundingRect(gate)      <- regresa (x, y, ancho, alto)
-    return None
+
+    # Cambio y adición para corregir el reconocimiento
+    puntos = cv2.vconcat(candidatos)
+    return cv2.boundingRect(puntos)
 
 
 # ✏️ COMPLETA ESTA FUNCIÓN (1 línea): el centro del rectángulo
@@ -35,4 +38,4 @@ def centro_de(gate):
     x, y, ancho, alto = gate
     # Pista: el centro está a la MITAD del ancho y a la MITAD del alto (Sesión 6)
     #        return x + ancho // 2, y + alto // 2
-    return x, y
+    return (x + ancho // 2)*1.5, (y + alto // 2)*1.5

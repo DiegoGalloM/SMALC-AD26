@@ -25,6 +25,8 @@ VELOCIDAD_GIRO_MAXIMA = 12
 VELOCIDAD_AVANCE = 10
 VELOCIDAD_BUSQUEDA = 20
 VELOCIDAD_SUBIDA = 60
+VELOCIDAD_CORRECCION_VERTICAL = 20
+GANANCIA_VERTICAL = 0.15
 SEGUNDOS_SUBIDA = 2.0
 SEGUNDOS_PARA_CRUZAR = 1.0
 SEGUNDOS_BUSCANDO = 18.0  # permite una búsqueda girando de hasta casi 360 grados
@@ -122,7 +124,11 @@ def main():
                     mensaje = f"ID {objetivo_id} perdido; buscando de nuevo"
                 else:
                     error_x = objetivo["centro_x"] - centro_x
-                    if abs(error_x) <= TOLERANCIA_CENTRADO:
+                    error_y = objetivo["centro_y"] - alto // 2
+                    if (
+                        abs(error_x) <= TOLERANCIA_CENTRADO
+                        and abs(error_y) <= TOLERANCIA_CENTRADO
+                    ):
                         frames_centrados += 1
                         if frames_centrados >= 5:
                             estado = "ACERCARSE"
@@ -132,8 +138,18 @@ def main():
                         giro = int(
                             limitar(0.08 * error_x, -VELOCIDAD_GIRO_MAXIMA, VELOCIDAD_GIRO_MAXIMA)
                         )
-                        rc = (0, 0, 0, giro)
-                        mensaje = f"Alineando ID {objetivo_id}; error x = {error_x:.0f} px"
+                        subir = int(
+                            limitar(
+                                -GANANCIA_VERTICAL * error_y,
+                                -VELOCIDAD_CORRECCION_VERTICAL,
+                                VELOCIDAD_CORRECCION_VERTICAL,
+                            )
+                        )
+                        rc = (0, 0, subir, giro)
+                        mensaje = (
+                            f"Alineando ID {objetivo_id}; "
+                            f"error x = {error_x:.0f} px, error y = {error_y:.0f} px"
+                        )
 
             elif estado == "ACERCARSE":
                 if objetivo is None:
@@ -142,7 +158,11 @@ def main():
                     mensaje = f"ID {objetivo_id} perdido; buscando de nuevo"
                 else:
                     error_x = objetivo["centro_x"] - centro_x
-                    if abs(error_x) > TOLERANCIA_CENTRADO:
+                    error_y = objetivo["centro_y"] - alto // 2
+                    if (
+                        abs(error_x) > TOLERANCIA_CENTRADO
+                        or abs(error_y) > TOLERANCIA_CENTRADO
+                    ):
                         estado = "ALINEAR"
                         frames_centrados = 0
                         mensaje = "Me desvié del centro; realineando"
@@ -151,10 +171,21 @@ def main():
                         inicio_cruce = ahora
                         mensaje = f"ID {objetivo_id} cerca; cruzando despacio"
                     else:
-                        rc = (0, VELOCIDAD_AVANCE, 0, 0)
+                        subir = int(
+                            limitar(
+                                -GANANCIA_VERTICAL * error_y,
+                                -VELOCIDAD_CORRECCION_VERTICAL,
+                                VELOCIDAD_CORRECCION_VERTICAL,
+                            )
+                        )
+                        giro = int(
+                            limitar(0.08 * error_x, -VELOCIDAD_GIRO_MAXIMA, VELOCIDAD_GIRO_MAXIMA)
+                        )
+                        rc = (0, VELOCIDAD_AVANCE, subir, giro)
                         mensaje = (
                             f"Acercándose a ID {objetivo_id}; "
-                            f"tamaño {objetivo['lado_px']:.0f} px"
+                            f"tamaño {objetivo['lado_px']:.0f} px, "
+                            f"error y = {error_y:.0f} px"
                         )
 
             elif estado == "CRUZAR":

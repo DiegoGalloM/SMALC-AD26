@@ -20,10 +20,10 @@ import movimientos
 import vision
 from conexion import conectar, leer_foto, mostrar, terminar
 
-MODO = "simulador"  # "simulador" o "tello" (¡solo con el staff!)
-ANCHO_PARA_CRUZAR = 380  # pixeles: si la gate se ve así de ancha, ya está muy cerca
+MODO = "tello"  # "simulador" o "tello" (¡solo con el staff!)
+ANCHO_PARA_CRUZAR = 280  # cruza antes de que el marco quede recortado por la cámara
 TOLERANCIA = 30  # pixeles: si los dos errores son menores, la gate está centrada
-SEGUNDOS_CRUZANDO = 4  # cuánto avanza "a ciegas" para atravesar la gate
+SEGUNDOS_CRUZANDO = 6  # cuánto avanza "a ciegas" para atravesar la gate
 
 tello = conectar(MODO)
 estado = "EN_TIERRA"
@@ -47,8 +47,8 @@ while True:
     giro, subir, centrada, cerca = 0, 0, False, False
     if veo_gate:
         centro_x, centro_y = vision.centro_de(gate)
-        error_x = control.error_horizontal(centro_x, 640)
-        error_y = control.error_vertical(centro_y, 480)
+        error_x = centro_x - 300
+        error_y = 260 - centro_y
         giro = control.control_p(error_x, control.KP_GIRO)
         subir = control.control_p(error_y, control.KP_ALTURA)
         centrada = abs(error_x) < TOLERANCIA and abs(error_y) < TOLERANCIA
@@ -71,20 +71,31 @@ while True:
     elif estado == "BUSCANDO":
         movimientos.girar(tello)
         # ✏️ COMPLETA: si ve la gate (veo_gate), cambia a "CENTRANDO"
+        if veo_gate:
+            estado = "CENTRANDO"
 
     elif estado == "CENTRANDO":
         movimientos.corregir(tello, giro, subir, 0)  # se centra sin avanzar
         # ✏️ COMPLETA: si deja de ver la gate, regresa a "BUSCANDO"
         # ✏️ COMPLETA: si ya está centrada, cambia a "ACERCANDOSE"
+        if not veo_gate:
+            estado = "BUSCANDO"
+        elif centrada:
+            estado = "ACERCANDOSE"
 
     elif estado == "ACERCANDOSE":
         movimientos.corregir(tello, giro, subir, movimientos.VELOCIDAD_AVANCE)  # avanza sin dejar de centrarse
         # ✏️ COMPLETA: si deja de ver la gate, regresa a "BUSCANDO"
         # ✏️ COMPLETA: si ya está cerca, cambia a "CRUZANDO"
+        if not veo_gate:
+            estado = "BUSCANDO"
+        elif cerca:
+            estado = "CRUZANDO"
 
     elif estado == "CRUZANDO":
         movimientos.avanzar(tello)  # ¡a ciegas! la gate ya no cabe en la cámara
-        # ✏️ COMPLETA: si pasan SEGUNDOS_CRUZANDO segundos, cambia a "ATERRIZANDO"
+        if segundos >= SEGUNDOS_CRUZANDO:
+            estado = "ATERRIZANDO"
 
     elif estado == "ATERRIZANDO":
         movimientos.detener(tello)
