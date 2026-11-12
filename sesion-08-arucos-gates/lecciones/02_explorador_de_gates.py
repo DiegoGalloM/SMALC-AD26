@@ -20,8 +20,10 @@ BATERIA_MINIMA = 10
 
 # AJUSTES PARA EL MONTAJE: el tamaño en píxeles depende de la cámara y la gate
 TOLERANCIA_CENTRADO = 35  # píxeles desde el centro de la imagen
+TOLERANCIA_REAJUSTE = 55  # margen mayor para evitar cambios de estado por ruido
 TAMANO_PARA_CRUZAR = 170  # lado del marcador en píxeles; ajustar en la prueba
 VELOCIDAD_GIRO_MAXIMA = 12
+GANANCIA_GIRO = 0.05
 VELOCIDAD_AVANCE = 10
 VELOCIDAD_BUSQUEDA = 20
 VELOCIDAD_SUBIDA = 60
@@ -136,7 +138,7 @@ def main():
                     else:
                         frames_centrados = 0
                         giro = int(
-                            limitar(0.08 * error_x, -VELOCIDAD_GIRO_MAXIMA, VELOCIDAD_GIRO_MAXIMA)
+                            limitar(GANANCIA_GIRO * error_x, -VELOCIDAD_GIRO_MAXIMA, VELOCIDAD_GIRO_MAXIMA)
                         )
                         subir = int(
                             limitar(
@@ -160,8 +162,8 @@ def main():
                     error_x = objetivo["centro_x"] - centro_x
                     error_y = objetivo["centro_y"] - alto // 2
                     if (
-                        abs(error_x) > TOLERANCIA_CENTRADO
-                        or abs(error_y) > TOLERANCIA_CENTRADO
+                        abs(error_x) > TOLERANCIA_REAJUSTE
+                        or abs(error_y) > TOLERANCIA_REAJUSTE
                     ):
                         estado = "ALINEAR"
                         frames_centrados = 0
@@ -179,7 +181,7 @@ def main():
                             )
                         )
                         giro = int(
-                            limitar(0.08 * error_x, -VELOCIDAD_GIRO_MAXIMA, VELOCIDAD_GIRO_MAXIMA)
+                            limitar(GANANCIA_GIRO * error_x, -VELOCIDAD_GIRO_MAXIMA, VELOCIDAD_GIRO_MAXIMA)
                         )
                         rc = (0, VELOCIDAD_AVANCE, subir, giro)
                         mensaje = (

@@ -26,7 +26,7 @@ LADOS = ["izquierda", "derecha", "izquierda"]      # hacia dónde gira para busc
 ALTURA_DE_VUELO = 110       # cm: sube hasta aquí antes de empezar a buscar
 DISTANCIA_DE_LLEGADA = 90   # cm: si el ArUco está a menos de esto, ya "llegó"
 
-dron = Dron("simulador", objetivo="aruco")   # con el staff: cambia "simulador" por "tello"
+dron = Dron("tello", objetivo="aruco")   # con el staff: cambia "simulador" por "tello"
 estado = "EN_TIERRA"
 paso = 0                    # en qué parte de la RUTA vamos (0 = el primer ArUco)
 

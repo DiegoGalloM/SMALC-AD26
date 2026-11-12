@@ -1003,9 +1003,9 @@ class Dron:
             lineas = [f"distancia segun tus funciones: {distancia}", f"accion: {accion}"]
             # La barra del rescate: se llena en el estado RESCATANDO, a 1 m de Blu
             avance = 1.0 if s.rescatado else min(1.0, self._progreso_blu / max(0.1, SEGUNDOS_RESCATE - 0.3))
-            cv2.putText(hud, "rescate", (12, 141), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1, cv2.LINE_AA)
-            cv2.rectangle(hud, (90, 128), (460, 144), (90, 90, 90), 1)
-            cv2.rectangle(hud, (91, 129), (91 + int(368 * avance), 143), (57, 255, 20), -1)
+            cv2.putText(hud, "rescate", (12, 135), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (200, 200, 200), 1, cv2.LINE_AA)
+            cv2.rectangle(hud, (90, 123), (460, 137), (90, 90, 90), 1)
+            cv2.rectangle(hud, (91, 124), (91 + int(368 * avance), 136), (57, 255, 20), -1)
         else:
             banderas = [("en_el_aire", s.en_el_aire), ("veo_color", s.veo_color), ("centrado", s.centrado),
                         ("cerca", s.cerca), ("veo_rojo", s.veo_rojo), ("veo_verde", s.veo_verde),
