@@ -9,3 +9,8 @@ sesion-04-opencv-rally/instructores/
 sesion-07-maquinas-de-estados/instructores/
 sesion-08-integracion/instructores/
 sesion-10-integracion-final/instructores/
+sesion-11-rally-general/instructores/
+
+# Puntos del marcador en vivo (se crean al usarlo)
+sesion-11-rally-general/marcador/marcador_datos.json
+sesion-11-rally-general/marcador/marcador_datos.tmp
