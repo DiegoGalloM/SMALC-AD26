@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sesión 8: ArUcos con el dron Tello</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#EEF4F2;--ink:#14262E;--mut:#4B6470;--card:#fff;--line:#C9D9D6;--acc:#3E9B1F;--blue:#1F5FD1;--red:#D6333C;--code:#14262E;--codeink:#E6F2EE;color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0F1B20;--ink:#E6F2EE;--mut:#9DB4BC;--card:#172830;--line:#2B424B;--acc:#7ACB2E;--blue:#6EA2FF;--red:#FF6B73;--code:#0A1317;--codeink:#E6F2EE;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0F1B20;--ink:#E6F2EE;--mut:#9DB4BC;--card:#172830;--line:#2B424B;--acc:#7ACB2E;--blue:#6EA2FF;--red:#FF6B73;--code:#0A1317;--codeink:#E6F2EE;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:clamp(16px,1.6vw,22px)/1.45 "Atkinson Hyperlegible",system-ui,sans-serif;overflow:hidden}
+h1,h2{font-family:"Bricolage Grotesque",system-ui,sans-serif;line-height:1.05;margin:0 0 .5em;letter-spacing:-.01em}
+h1{font-size:clamp(34px,6vw,84px);font-weight:800}
+h2{font-size:clamp(26px,3.8vw,54px);font-weight:800}
+p{margin:.4em 0;max-width:34em}
+.slide{position:absolute;inset:0;padding:clamp(20px,5vh,56px) clamp(20px,6vw,90px) 70px;display:flex;flex-direction:column;justify-content:flex-start;overflow-y:auto;opacity:0;visibility:hidden;transform:translateX(40px);transition:opacity .45s ease,transform .45s ease,visibility 0s .45s}
+.slide::before,.slide::after{content:"";flex:1 0 0}
+.slide.on{opacity:1;visibility:visible;transform:none;transition:opacity .45s ease,transform .45s ease}
+.slide.past{transform:translateX(-40px)}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:clamp(18px,4vw,60px);align-items:center}
+@media (max-width:760px){.cols{grid-template-columns:1fr}}
+.card{background:var(--card);border:2px solid var(--line);border-radius:14px;padding:.8em 1em}
+pre{background:var(--code);color:var(--codeink);border-radius:12px;padding:1em 1.1em;font:clamp(13px,1.4vw,19px)/1.5 ui-monospace,Menlo,Consolas,monospace;overflow-x:auto;margin:.4em 0}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:0 .3em}
+pre code{background:none;border:0;padding:0}
+.g{color:#7ACB2E}.b{color:#7FB0FF}.r{color:#FF8189}.c{color:#8FA9B2}
+.loop{display:flex;flex-wrap:wrap;gap:.7em;margin-top:1em}
+.step{flex:1 1 9em;border:2px solid var(--line);border-radius:14px;background:var(--card);padding:.7em .9em;animation:glow 6.4s infinite}
+.step:nth-child(2){animation-delay:1.6s}.step:nth-child(3){animation-delay:3.2s}.step:nth-child(4){animation-delay:4.8s}
+.step b{display:block;font:800 1.15em "Bricolage Grotesque",sans-serif}
+@keyframes glow{0%,22%{border-color:var(--acc);box-shadow:0 0 0 4px color-mix(in srgb,var(--acc) 30%,transparent)}30%,100%{border-color:var(--line);box-shadow:none}}
+.back{color:var(--mut);margin-top:.6em}
+/* viewfinder */
+.box{position:relative;width:100%;max-width:min(520px,52vh*1.333);aspect-ratio:4/3;background:var(--code);border-radius:14px;overflow:hidden;touch-action:none;cursor:crosshair;border:2px solid var(--line)}
+.box::before,.box::after{content:"";position:absolute;background:#fff;opacity:.9}
+.box::before{left:calc(50% - 12px);top:50%;width:24px;height:2px}
+.box::after{top:calc(50% - 12px);left:50%;height:24px;width:2px}
+.box svg{position:absolute;inset:0;width:100%;height:100%}
+.dot{position:absolute;width:15%;aspect-ratio:1;border-radius:50%;background:#7ACB2E;border:3px solid #fff;transform:translate(-50%,-50%);outline:2px solid #1F8A3C}
+.out{font:700 1em ui-monospace,Menlo,Consolas,monospace;margin-top:.6em;min-height:3.2em}
+.out span{display:block}
+.hint{color:var(--mut);font-size:.85em}
+ul{padding-left:1.1em;margin:.4em 0}li{margin:.35em 0}
+.tag{display:inline-block;border:2px solid var(--acc);border-radius:99px;padding:.05em .7em;font-weight:700;margin-bottom:.8em}
+.fig{max-width:300px;width:100%;color:var(--ink)}
+.mk{display:inline-block;text-align:center;margin:.3em .5em .3em 0;vertical-align:top}
+.mk svg{width:clamp(90px,15vw,170px);height:auto;display:block;border-radius:8px;border:2px solid var(--line)}
+.mk b{font-size:.85em}
+/* chrome */
+.bar{position:fixed;left:0;top:env(safe-area-inset-top,0px);height:5px;background:var(--acc);transition:width .4s;z-index:20}
+.nav{position:fixed;left:0;right:0;bottom:0;padding:10px 16px calc(10px + env(safe-area-inset-bottom,0px));display:flex;gap:10px;align-items:center;justify-content:flex-end;z-index:20}
+.nav button{font:700 1em "Atkinson Hyperlegible",sans-serif;color:var(--ink);background:var(--card);border:2px solid var(--line);border-radius:10px;padding:.35em .9em;cursor:pointer}
+.nav button:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.nav .n{margin-right:auto;color:var(--mut)}
+#notes{position:fixed;left:0;right:0;bottom:0;max-height:42%;overflow:auto;background:var(--code);color:var(--codeink);padding:14px clamp(16px,6vw,90px) 70px;z-index:15;font-size:.95em;transform:translateY(100%);transition:transform .3s}
+#notes.show{transform:none}
+#notes b{color:#7ACB2E}
+@media (prefers-reduced-motion:reduce){.slide,.slide.on,.bar,#notes{transition:none}.step{animation:none}}
+</style>
+</head>
+<body>
+<div class="bar" id="bar"></div>
+
+<!-- 1 -->
+<section class="slide">
+  <span class="tag">Sesión rápida 8</span>
+  <h1>ArUcos: marcas que el dron entiende</h1>
+  <p>En vez de seguir un color, el dron sigue un código con número propio.</p>
+  <div><span class="mk" data-id="0"></span><span class="mk" data-id="1"></span><span class="mk" data-id="2"></span></div>
+  <aside hidden>
+    <b>Apertura (2 min).</b> Muestra los tres marcadores: son los que usarán hoy. Pregunta: ¿qué problema tiene seguir un color? (la luz cambia el rango HSV, otros objetos del mismo color confunden). Un ArUco resuelve eso: cada marca tiene un número (ID) que el dron lee, así sabe cuál seguir. Es la misma idea de visual servoing de la sesión 6, solo cambia cómo encontramos el objetivo.
+  </aside>
+</section>
+
+<!-- 2 -->
+<section class="slide">
+  <h2>Repaso: es el mismo servo visual</h2>
+  <div class="loop">
+    <div class="step"><b>1. Ver</b>La cámara toma una imagen.</div>
+    <div class="step"><b>2. Encontrar</b>Ahora busca un ArUco, no un color.</div>
+    <div class="step"><b>3. Error y P</b>Error contra el centro, por KP, con tope.</div>
+    <div class="step"><b>4. Mover</b>Yaw y altura corrigen, como en la sesión 6.</div>
+  </div>
+  <p class="back">Solo cambia el paso 2. El error, <code>KP_YAW</code>, <code>KP_ALTURA</code> y <code>limitar</code> se quedan igual.</p>
+  <aside hidden>
+    <b>Repaso (2 min).</b> Recuerda el ciclo: ver, encontrar, medir el error, corregir con P, mover. Pregunta de control: ¿cómo se calcula error_x? (objeto_x menos centro_x). ¿Y error_y en el dron? (centro_y menos objeto_y, para que arriba sea positivo). Todo eso ya lo saben; hoy el único cambio es el paso 2.
+  </aside>
+</section>
+
+<!-- 3 -->
+<section class="slide">
+  <div class="cols">
+    <div>
+      <h2>¿Qué es un ArUco?</h2>
+      <ul>
+        <li>Un cuadrado con <b>borde negro</b> y una cuadrícula de 4×4 cuadritos blancos y negros.</li>
+        <li>Ese patrón es un código: cada marca significa un número, su <b>ID</b>.</li>
+        <li>Usamos el diccionario <code>DICT_4X4_50</code>: 50 marcas distintas, con IDs de 0 a 49.</li>
+        <li>No hay que ajustar rangos HSV: la luz importa mucho menos.</li>
+      </ul>
+    </div>
+    <div style="text-align:center"><span class="mk" data-id="0" data-digits="1"></span><span class="mk" data-id="1"></span><span class="mk" data-id="2"></span><p class="hint">1 = cuadrito blanco, 0 = cuadrito negro</p></div>
+  </div>
+  <aside hidden>
+    <b>Qué es (3 min).</b> Compara con un código de barras o un código QR: el patrón guarda un número. 4×4 son 16 bits, y el diccionario 4x4_50 usa solo 50 de las combinaciones posibles, elegidas para que no se parezcan entre sí (así no se confunden aunque se vean un poco mal). Pide que lean la primera marca con los números: la fila de arriba es 1 0 1 1. El borde negro sirve para que el detector encuentre el cuadrado fácilmente. Se imprimen con un margen blanco alrededor.
+  </aside>
+</section>
+
+<!-- 4 -->
+<section class="slide">
+  <h2>¿Cómo lo reconoce la computadora?</h2>
+  <div class="cols">
+    <ol>
+      <li>Pasa la imagen a grises y busca bordes.</li>
+      <li>Encuentra figuras de 4 lados.</li>
+      <li>Las endereza para verlas de frente, aunque estén inclinadas.</li>
+      <li>Lee los 4×4 cuadritos: blanco es 1, negro es 0.</li>
+      <li>Busca ese patrón en el diccionario, probando las 4 rotaciones.</li>
+    </ol>
+    <div>
+      <p><b>Resultado:</b> el <b>ID</b> y las <b>4 esquinas</b> de cada marca encontrada.</p>
+      <p class="hint">Si el ángulo es muy grande, el marcador se ve muy aplastado y deja de detectarse.</p>
+    </div>
+  </div>
+  <aside hidden>
+    <b>Cómo funciona (4 min).</b> Relaciona con lo que ya vieron: los pasos 1 y 2 se parecen a la máscara y los contornos de la lección 3. El paso 3 es lo nuevo: aunque la marca se vea torcida (como en las puertas a 45 grados), la computadora la deforma matemáticamente hasta verla cuadrada y entonces lee los cuadritos. Probar 4 rotaciones permite reconocerla aunque esté de lado o de cabeza. Lo que entrega es el ID y las cuatro esquinas; con las esquinas obtenemos el mismo rectángulo y centro de la lección 3.
+  </aside>
+</section>
+
+<!-- 5 -->
+<section class="slide">
+  <div class="cols">
+    <div>
+      <h2>Servo visual al ArUco</h2>
+      <ul>
+        <li>Se detectan las marcas y se elige la que tiene el ID <code>objetivo</code>.</li>
+        <li>Sus esquinas dan el rectángulo verde, igual que antes.</li>
+        <li>Su centro, el error y las velocidades se calculan igual.</li>
+        <li>Mismos dibujos: círculo rojo, línea azul y cruz blanca.</li>
+      </ul>
+    </div>
+    <pre><code>esquinas, ids, _ = detector.detectMarkers(frame)
+if ids is not None and objetivo in ids.flatten():
+  k = list(ids.flatten()).index(objetivo)
+  x, y, w, h = cv2.boundingRect(
+    esquinas[k].reshape(4, 2).astype("int32"))
+  <span class="c"># desde aquí: centro, error y P igual que antes</span></code></pre>
+  </div>
+  <aside hidden>
+    <b>El código (5 min).</b> Detectar devuelve una lista de esquinas y una lista de IDs en el mismo orden. Buscamos si el ID objetivo está en la lista y tomamos sus esquinas. boundingRect las convierte en el rectángulo x, y, w, h que ya conocen: de ahí en adelante todo es igual (objeto_x, objeto_y, error, velocidad_yaw, velocidad_vertical, send_rc_control). Si el objetivo no aparece, las velocidades quedan en cero. Si hay otras marcas en la imagen se ignoran: eso es mejor que el color, donde un objeto verde cualquiera confundía al dron.
+  </aside>
+</section>
+
+<!-- 6 -->
+<section class="slide">
+  <div class="cols">
+    <div>
+      <h2>La misión: slalom en zigzag</h2>
+      <ul>
+        <li>3 puertas en zigzag, todas a 45°, cada una con su ArUco: ID 0, 1 y 2.</li>
+        <li>El dron sigue primero el ID 0; al llegar, cambia al ID 1 y luego al ID 2.</li>
+        <li>Al llegar a la tercera puerta, <b>aterriza</b>.</li>
+      </ul>
+    </div>
+    <svg class="fig" style="max-width:380px" viewBox="0 0 360 230" role="img" aria-label="Vista desde arriba: tres puertas a 45 grados en zigzag y la ruta del dron"><defs><marker id="ar2" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#1F5FD1"/></marker></defs><polyline points="30,115 110,60 195,170 280,60" fill="none" stroke="#1F5FD1" stroke-width="3" stroke-dasharray="7 5" marker-end="url(#ar2)"/><g stroke="#3E9B1F" stroke-width="7" stroke-linecap="round"><line x1="94" y1="44" x2="126" y2="76"/><line x1="179" y1="154" x2="211" y2="186"/><line x1="264" y1="44" x2="296" y2="76"/></g><circle cx="30" cy="115" r="8" fill="#D6333C"/><g fill="currentColor" font-size="14" font-weight="700"><text x="12" y="140">inicio</text><text x="62" y="38">ID 0</text><text x="150" y="205">ID 1</text><text x="236" y="38">ID 2</text><text x="276" y="102">aterriza</text></g></svg>
+  </div>
+  <aside hidden>
+    <b>La misión (3 min).</b> Vista desde arriba: el dron sale del inicio, se acerca a la puerta 0 (a la izquierda), luego a la 1 (a la derecha) y finalmente a la 2. Las puertas están a 45 grados, así que el dron las ve en ángulo y debe girar (yaw) hacia la siguiente: el servo visual hace ese trabajo. Cada puerta tiene su ArUco, y cambiar de objetivo es cambiar el número de objetivo. Defina con el grupo qué significa "llegar": por ejemplo, cuando el marcador se ve suficientemente grande en la imagen (está cerca). Al llegar a la tercera, el programa manda velocidades en cero y aterriza.
+  </aside>
+</section>
+
+<!-- 7 -->
+<section class="slide">
+  <h2>Seguridad y reto</h2>
+  <div class="cols">
+    <ol>
+      <li>Imprime los 3 marcadores y comprueba en pantalla que cada ID se detecta (rectángulo verde).</li>
+      <li>Con <code>MODO_VUELO = False</code>, mueve un marcador y revisa los signos del error.</li>
+      <li>Arma las 3 puertas a 45° y pide al staff revisar el espacio.</li>
+      <li>Vuela: puerta 0, 1 y 2, y aterriza en la tercera.</li>
+    </ol>
+    <div class="card"><b>Reglas:</b>
+      <ul><li>Si se pierde el marcador, controles en cero.</li><li>Una persona con la mano sobre <code>q</code> en todo momento.</li><li>Todos a distancia del dron.</li></ul>
+    </div>
+  </div>
+  <aside hidden>
+    <b>Cierre (resto de la clase).</b> Primero verifican en pantalla sin volar: ¿cada ID se ve? ¿el error cambia de signo al mover el marcador? Después pasan a vuelo con el staff. Si un marcador no se detecta: revisar iluminación, tamaño de impresión, margen blanco y que no esté demasiado inclinado. Pregunta final: ¿qué ventaja tiene un ArUco sobre un color, y qué desventaja? (más robusto y con número, pero necesita verse completo y no demasiado torcido).
+  </aside>
+</section>
+
+<div id="notes"></div>
+<div class="nav"><span class="n" id="num"></span><button id="nb" aria-pressed="false">Notas (N)</button><button id="pv">Anterior</button><button id="nx">Siguiente</button></div>
+
+<script>
+(function(){
+var S=[].slice.call(document.querySelectorAll('.slide')),i=0,notes=document.getElementById('notes');
+function show(n){
+  i=Math.max(0,Math.min(S.length-1,n));
+  S.forEach(function(s,k){s.classList.toggle('on',k===i);s.classList.toggle('past',k<i)});
+  document.getElementById('bar').style.width=((i+1)/S.length*100)+'%';
+  document.getElementById('num').textContent=(i+1)+' / '+S.length;
+  var a=S[i].querySelector('aside');notes.innerHTML=a?a.innerHTML:'';
+  try{history.replaceState(null,'','#'+(i+1))}catch(e){}
+}
+function tn(){var o=notes.classList.toggle('show');document.getElementById('nb').setAttribute('aria-pressed',o)}
+document.getElementById('nx').onclick=function(){show(i+1)};
+document.getElementById('pv').onclick=function(){show(i-1)};
+document.getElementById('nb').onclick=tn;
+document.addEventListener('keydown',function(e){
+  var k=e.key;
+  if(k==='ArrowRight'||k==='PageDown'||k===' '){e.preventDefault();show(i+1)}
+  else if(k==='ArrowLeft'||k==='PageUp'){show(i-1)}
+  else if(k==='Home'){show(0)}else if(k==='End'){show(S.length-1)}
+  else if(k==='n'||k==='N'){tn()}
+  else if(k==='f'||k==='F'){try{document.fullscreenElement?document.exitFullscreen():document.documentElement.requestFullscreen()}catch(x){}}
+});
+var sx=null;
+document.addEventListener('touchstart',function(e){sx=e.target.closest('.box')?null:e.touches[0].clientX},{passive:true});
+document.addEventListener('touchend',function(e){if(sx===null)return;var d=e.changedTouches[0].clientX-sx;if(Math.abs(d)>60)show(i+(d<0?1:-1));sx=null},{passive:true});
+
+/* viewfinder demos */
+var W=640,H=480;
+function lim(v,m){return Math.max(-m,Math.min(m,v))}
+var reduce=window.matchMedia('(prefers-reduced-motion:reduce)').matches;
+[].forEach.call(document.querySelectorAll('.vf'),function(el){
+  var box=el.querySelector('.box'),dot=el.querySelector('.dot'),ln=el.querySelector('line'),out=el.querySelector('.out'),mode=el.dataset.mode;
+  var kp=parseFloat(el.dataset.kp||.08),mx=parseFloat(el.dataset.max||30);
+  var x=W*.7,y=H*.3,auto=mode==='auto'&&!reduce,t=0;
+  function draw(){
+    dot.style.left=(x/W*100)+'%';dot.style.top=(y/H*100)+'%';
+    ln.setAttribute('x1',W/2);ln.setAttribute('y1',H/2);ln.setAttribute('x2',x);ln.setAttribute('y2',y);
+    var ex=Math.round(x-W/2),ey=Math.round(y-H/2),h;
+    if(mode==='pos'){h='<span>Objeto en ('+Math.round(x)+', '+Math.round(y)+')</span><span>Centro del frame: ('+W/2+', '+H/2+')</span>'}
+    else{
+      h='<span>error_x = '+ex+'   error_y = '+ey+'</span>';
+      if(mode==='speed'){
+        var rx=kp*ex,ry=kp*ey;
+        h+='<span>salida_x = '+Math.round(lim(rx,mx))+(Math.abs(rx)>mx?' (límite)':'')+'</span><span>salida_y = '+Math.round(lim(ry,mx))+(Math.abs(ry)>mx?' (límite)':'')+'</span>';
+      }
+    }
+    out.innerHTML=h;
+  }
+  function set(e){
+    var r=box.getBoundingClientRect();
+    x=Math.max(0,Math.min(W,(e.clientX-r.left)/r.width*W));
+    y=Math.max(0,Math.min(H,(e.clientY-r.top)/r.height*H));draw();
+  }
+  var drag=false;
+  box.addEventListener('pointerdown',function(e){drag=true;auto=false;box.setPointerCapture(e.pointerId);set(e)});
+  box.addEventListener('pointermove',function(e){if(drag)set(e)});
+  box.addEventListener('pointerup',function(){drag=false});
+  if(auto)setInterval(function(){if(!auto)return;t+=.04;x=W/2+Math.cos(t)*W*.32;y=H/2+Math.sin(t*1.3)*H*.28;draw()},40);
+  draw();
+});
+var h=parseInt(location.hash.slice(1),10);show(isNaN(h)?0:h-1);
+})();
+</script>
+<script>
+var MK={"0": "1011010100110010", "1": "0000111110011010", "2": "0011001100101101"};
+[].forEach.call(document.querySelectorAll('.mk'),function(el){
+  var id=el.dataset.id,b=MK[id],d=el.dataset.digits,v='<svg viewBox="-.5 -.5 7 7" role="img" aria-label="ArUco ID '+id+'"><rect x="-.5" y="-.5" width="7" height="7" fill="#fff"/><rect width="6" height="6" fill="#000"/>';
+  for(var r=0;r<4;r++)for(var c=0;c<4;c++){
+    var one=b.charAt(r*4+c)==='1';
+    if(one)v+='<rect x="'+(c+1)+'" y="'+(r+1)+'" width="1" height="1" fill="#fff"/>';
+    if(d)v+='<text x="'+(c+1.5)+'" y="'+(r+1.68)+'" font-size=".55" font-weight="700" text-anchor="middle" fill="'+(one?'#000':'#fff')+'">'+(one?1:0)+'</text>';
+  }
+  el.innerHTML=v+'</svg><b>ID '+id+'</b>';
+});
+</script>
+</body>
+</html>

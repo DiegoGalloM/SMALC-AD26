@@ -14,7 +14,10 @@ SMALC-AD26/
 ├── sesion-05-PID-Dron/                 # Materiales de la Sesión 5 (control PID del dron)
 ├── sesion-06-visual-servoing/          # Materiales de la Sesión 6 (visual servoing con el Tello)
 ├── sesion-07-maquinas-de-estados/      # Materiales de la Sesión 7 (máquinas de estados: el cerebro del dron)
-└── sesion-08-integracion/              # Materiales de la Sesión 8 (recap + Task 1: cruzar la gate azul)
+├── sesion-08-arucos-gates/             # Materiales de la Sesión 8 (marcadores ArUco con el Tello)
+├── sesion-08-integracion/              # Materiales de la Sesión 8 (recap + Task 1: cruzar la gate azul)
+├── sesion-10-integracion-final/        # Materiales de la Sesión 10 (zigzag de ArUcos + rescate de Blu)
+└── sesion-11-rally-general/            # Rally general de todo el curso, con marcador en vivo
 ```
 
 Cada sesión o reto vive en su propia carpeta, con su propio README explicando qué hay adentro y cómo usarlo.

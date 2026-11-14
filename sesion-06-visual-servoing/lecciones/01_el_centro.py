@@ -2,8 +2,8 @@ ANCHO = 640
 ALTO = 480
 
 # ✏️ COMPLETA: calcula el centro horizontal y vertical del frame.
-centro_x = 0
-centro_y = 0
+centro_x = ANCHO // 2
+centro_y = ALTO // 2
 
 print("El frame mide", ANCHO, "por", ALTO, "pixeles")
 print("Su centro esta en:", centro_x, centro_y)

@@ -10,7 +10,7 @@ KP_YAW = 0.12  # prueba una ganancia pequena y observa la correccion.
 KP_ALTURA = 0.08
 VELOCIDAD_MAXIMA = 20
 DURACION_SEGUNDOS = 15
-MODO_VUELO = False
+MODO_VUELO = True
 
 
 def limitar(valor, minimo, maximo):
@@ -55,8 +55,8 @@ try:
             error_x = objeto_x - centro_x
             error_y = centro_y - objeto_y
             # calcula las correcciones P y limitalas a VELOCIDAD_MAXIMA.
-            velocidad_yaw = limitar(1 * KP_YAW, -VELOCIDAD_MAXIMA, VELOCIDAD_MAXIMA)
-            velocidad_vertical = limitar(1 * KP_ALTURA, -VELOCIDAD_MAXIMA, VELOCIDAD_MAXIMA)
+            velocidad_yaw = limitar(error_x * KP_YAW, -VELOCIDAD_MAXIMA, VELOCIDAD_MAXIMA)
+            velocidad_vertical = limitar(error_y * KP_ALTURA, -VELOCIDAD_MAXIMA, VELOCIDAD_MAXIMA)
 
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
             cv2.circle(frame, (objeto_x, objeto_y), 6, (0, 0, 255), -1)
